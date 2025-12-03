@@ -13,6 +13,13 @@ import { HealthModule } from './health/health.module';
 import { TwilioModule } from './twilio/twilio.module';
 import { ElevenLabsModule } from './elevenlabs/elevenlabs.module';
 import { OpenAIModule } from './openai/openai.module';
+import { CallsModule } from './calls/calls.module';
+import { ConversationModule } from './conversation/conversation.module';
+import { MemoriesModule } from './memories/memories.module';
+import { BillingModule } from './billing/billing.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+import { JobsModule } from './jobs/jobs.module';
+import { UserPhonesModule } from './user-phones/user-phones.module';
 
 @Module({
   imports: [
@@ -42,6 +49,13 @@ import { OpenAIModule } from './openai/openai.module';
     TwilioModule,
     ElevenLabsModule,
     OpenAIModule,
+    CallsModule,
+    ConversationModule,
+    MemoriesModule,
+    BillingModule,
+    WebhooksModule,
+    JobsModule,
+    UserPhonesModule,
   ],
 })
 export class AppModule {}
