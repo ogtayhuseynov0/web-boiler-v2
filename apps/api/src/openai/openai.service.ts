@@ -34,10 +34,11 @@ export class OpenAIService implements OnModuleInit {
 
   onModuleInit() {
     const apiKey = this.configService.get<string>('openai.apiKey');
-    this.model = this.configService.get<string>('openai.model');
-    this.embeddingModel = this.configService.get<string>(
-      'openai.embeddingModel',
-    );
+    this.model =
+      this.configService.get<string>('openai.model') || 'gpt-4o-mini';
+    this.embeddingModel =
+      this.configService.get<string>('openai.embeddingModel') ||
+      'text-embedding-3-small';
 
     if (!apiKey) {
       this.logger.warn(

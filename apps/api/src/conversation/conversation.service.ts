@@ -191,7 +191,12 @@ export class ConversationService {
     );
 
     // Store greeting as system message
-    await this.callsService.addMessage(call.id, 'assistant', greeting, audioUrl);
+    await this.callsService.addMessage(
+      call.id,
+      'assistant',
+      greeting,
+      audioUrl ?? undefined,
+    );
 
     return { greeting, audioUrl, session };
   }
@@ -262,7 +267,7 @@ export class ConversationService {
       session.callId,
       'assistant',
       response,
-      audioUrl,
+      audioUrl ?? undefined,
     );
 
     return { response, audioUrl, shouldEnd };

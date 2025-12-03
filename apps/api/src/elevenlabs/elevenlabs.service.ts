@@ -23,11 +23,11 @@ export class ElevenLabsService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.apiKey = this.configService.get<string>('elevenlabs.apiKey');
-    this.defaultVoiceId = this.configService.get<string>(
-      'elevenlabs.defaultVoiceId',
-    );
-    this.modelId = this.configService.get<string>('elevenlabs.modelId');
+    this.apiKey = this.configService.get<string>('elevenlabs.apiKey') || '';
+    this.defaultVoiceId =
+      this.configService.get<string>('elevenlabs.defaultVoiceId') || '';
+    this.modelId =
+      this.configService.get<string>('elevenlabs.modelId') || 'eleven_turbo_v2';
 
     if (!this.apiKey) {
       this.logger.warn(

@@ -8,7 +8,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiExcludeEndpoint } from '@nestjs/swagger';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { TwilioService } from '../twilio/twilio.service';
 import { CallsService } from '../calls/calls.service';
 import { ConversationService } from '../conversation/conversation.service';

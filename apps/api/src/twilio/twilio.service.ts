@@ -15,10 +15,10 @@ export class TwilioService implements OnModuleInit {
   onModuleInit() {
     const accountSid = this.configService.get<string>('twilio.accountSid');
     const authToken = this.configService.get<string>('twilio.authToken');
-    this.phoneNumber = this.configService.get<string>('twilio.phoneNumber');
-    this.webhookBaseUrl = this.configService.get<string>(
-      'twilio.webhookBaseUrl',
-    );
+    this.phoneNumber =
+      this.configService.get<string>('twilio.phoneNumber') || '';
+    this.webhookBaseUrl =
+      this.configService.get<string>('twilio.webhookBaseUrl') || '';
 
     if (!accountSid || !authToken) {
       this.logger.warn(
