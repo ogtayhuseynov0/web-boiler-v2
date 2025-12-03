@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col px-4">
       <header className="border-b">
         <div className="flex h-16 items-center justify-between">
           <span className="text-xl font-bold">Boilerplate</span>
