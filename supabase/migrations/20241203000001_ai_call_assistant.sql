@@ -260,3 +260,76 @@ $$;
 create trigger on_profile_created_create_balance
   after insert on profiles
   for each row execute procedure handle_new_user_balance();
+
+-- Function to add balance
+create or replace function add_balance(p_user_id uuid, p_amount integer)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  update user_balances
+  set balance_cents = balance_cents + p_amount,
+      updated_at = now()
+  where user_id = p_user_id;
+end;
+$$;
+
+-- Function to deduct balance
+create or replace function deduct_balance(p_user_id uuid, p_amount integer, p_call_id uuid default null)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  -- Update balance
+  update user_balances
+  set balance_cents = balance_cents - p_amount,
+      total_spent_cents = total_spent_cents + p_amount,
+      updated_at = now()
+  where user_id = p_user_id;
+
+  -- Create transaction record
+  insert into balance_transactions (user_id, amount_cents, type, description, call_id)
+  values (p_user_id, -p_amount, 'call_charge', 'Call charge', p_call_id);
+end;
+$$;
+
+-- Function to match memories by vector similarity
+create or replace function match_memories(
+  query_embedding vector(1536),
+  match_user_id uuid,
+  match_threshold float default 0.5,
+  match_count int default 10
+)
+returns table (
+  id uuid,
+  user_id uuid,
+  call_id uuid,
+  content text,
+  category text,
+  importance_score decimal,
+  similarity float
+)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  return query
+  select
+    um.id,
+    um.user_id,
+    um.call_id,
+    um.content,
+    um.category,
+    um.importance_score,
+    1 - (um.embedding <=> query_embedding) as similarity
+  from user_memories um
+  where um.user_id = match_user_id
+    and um.is_active = true
+    and um.embedding is not null
+    and 1 - (um.embedding <=> query_embedding) > match_threshold
+  order by um.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
