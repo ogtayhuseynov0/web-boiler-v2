@@ -9,6 +9,10 @@ import {
   LogOut,
   Menu,
   X,
+  Phone,
+  Brain,
+  Calendar,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -17,9 +21,13 @@ import { useState } from "react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Calls", href: "/calls", icon: Phone },
+  { name: "Memories", href: "/memories", icon: Brain },
+  { name: "Schedule", href: "/schedule", icon: Calendar },
 ];
 
 const settingsNavigation = [
+  { name: "Billing", href: "/billing", icon: CreditCard },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -39,7 +47,7 @@ export function Sidebar() {
     <>
       <div className="flex h-16 items-center gap-2 px-6 border-b border-border dark:border-border/50">
         <Link href="/" className="flex items-center gap-2 group">
-          <span className="text-xl font-bold">Boilerplate</span>
+          <span className="text-xl font-bold">Ringy</span>
         </Link>
       </div>
 

@@ -10,6 +10,9 @@ import { AuthModule } from './auth/auth.module';
 import { QueueModule } from './queue/queue.module';
 import { ProfileModule } from './profile/profile.module';
 import { HealthModule } from './health/health.module';
+import { TwilioModule } from './twilio/twilio.module';
+import { ElevenLabsModule } from './elevenlabs/elevenlabs.module';
+import { OpenAIModule } from './openai/openai.module';
 
 @Module({
   imports: [
@@ -36,6 +39,9 @@ import { HealthModule } from './health/health.module';
     QueueModule,
     ProfileModule,
     HealthModule,
+    TwilioModule,
+    ElevenLabsModule,
+    OpenAIModule,
   ],
 })
 export class AppModule {}
