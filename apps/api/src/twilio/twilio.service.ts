@@ -1,14 +1,14 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Twilio } from 'twilio';
-import { VoiceResponse } from 'twilio/lib/twiml/VoiceResponse';
+import VoiceResponse from 'twilio/lib/twiml/VoiceResponse';
 
 @Injectable()
 export class TwilioService implements OnModuleInit {
   private readonly logger = new Logger(TwilioService.name);
   private client: Twilio;
-  private phoneNumber: string;
-  private webhookBaseUrl: string;
+  private phoneNumber: string = '';
+  private webhookBaseUrl: string = '';
 
   constructor(private configService: ConfigService) {}
 

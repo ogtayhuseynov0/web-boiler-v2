@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="flex h-16 items-center justify-between">
           <span className="text-xl font-bold">Boilerplate</span>
           <div className="flex items-center gap-4">
             <Button variant="ghost" asChild>
@@ -18,7 +18,7 @@ export default function Home() {
         </div>
       </header>
       <main className="flex-1">
-        <section className="container flex flex-col items-center justify-center gap-6 py-24 text-center">
+        <section className="flex flex-col items-center justify-center gap-6 py-24 text-center">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
             Your Next.js + NestJS Boilerplate
           </h1>
@@ -37,7 +37,7 @@ export default function Home() {
         </section>
       </main>
       <footer className="border-t py-6">
-        <div className="container text-center text-sm text-muted-foreground">
+        <div className="text-center text-sm text-muted-foreground">
           Built with Next.js, NestJS, and Supabase
         </div>
       </footer>
