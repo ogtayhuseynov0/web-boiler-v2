@@ -34,6 +34,8 @@ export class MemoriesService {
   async createMemory(data: CreateMemoryDto): Promise<Memory | null> {
     const supabase = this.supabaseService.getClient();
 
+    this.logger.log(`Creating memory for user ${data.user_id}: "${data.content.substring(0, 50)}..."`);
+
     // Generate embedding for the memory content
     const embedding = await this.openaiService.generateEmbedding(data.content);
 
@@ -56,6 +58,7 @@ export class MemoriesService {
       return null;
     }
 
+    this.logger.log(`Memory created with id: ${memory.id}`);
     return memory;
   }
 
