@@ -24,6 +24,13 @@ export default () => ({
     authToken: process.env.TWILIO_AUTH_TOKEN,
     phoneNumber: process.env.TWILIO_PHONE_NUMBER,
     webhookBaseUrl: process.env.TWILIO_WEBHOOK_BASE_URL,
+    verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID,
+  },
+
+  verification: {
+    provider: (process.env.PHONE_VERIFICATION_PROVIDER || 'twilio') as
+      | 'supabase'
+      | 'twilio',
   },
 
   elevenlabs: {

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { TwilioService } from '../twilio/twilio.service';
+import { VerificationService } from '../verification/verification.service';
 
 export interface UserPhone {
   id: string;
@@ -11,21 +11,13 @@ export interface UserPhone {
   created_at: string;
 }
 
-interface PendingVerification {
-  code: string;
-  expires_at: number;
-  attempts: number;
-}
-
 @Injectable()
 export class UserPhonesService {
   private readonly logger = new Logger(UserPhonesService.name);
-  // In-memory store for verification codes (use Redis in production)
-  private verificationCodes: Map<string, PendingVerification> = new Map();
 
   constructor(
     private supabaseService: SupabaseService,
-    private twilioService: TwilioService,
+    private verificationService: VerificationService,
   ) {}
 
   async getUserPhones(userId: string): Promise<UserPhone[]> {
@@ -117,38 +109,16 @@ export class UserPhonesService {
       return { success: false, error: 'Phone is already verified' };
     }
 
-    // Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    // Use the verification service (provider-agnostic)
+    const result = await this.verificationService.sendCode(userId, phone.phone_number);
 
-    // Store code
-    this.verificationCodes.set(phoneId, {
-      code,
-      expires_at: expiresAt,
-      attempts: 0,
-    });
-
-    // Send SMS via Twilio
-    const twilioClient = this.twilioService.getClient();
-    if (!twilioClient) {
-      // For development, log the code instead
-      this.logger.log(`[DEV] Verification code for ${phone.phone_number}: ${code}`);
-      return { success: true };
+    if (!result.success) {
+      this.logger.error(`Failed to send verification code: ${result.error}`);
+      return { success: false, error: result.error || 'Failed to send verification code' };
     }
 
-    try {
-      await twilioClient.messages.create({
-        body: `Your Ringy verification code is: ${code}. It expires in 10 minutes.`,
-        from: this.twilioService.getPhoneNumber(),
-        to: phone.phone_number,
-      });
-
-      this.logger.log(`Sent verification code to ${phone.phone_number}`);
-      return { success: true };
-    } catch (error) {
-      this.logger.error('Failed to send SMS:', error);
-      return { success: false, error: 'Failed to send verification code' };
-    }
+    this.logger.log(`Sent verification code to ${phone.phone_number} via ${this.verificationService.getProviderName()}`);
+    return { success: true };
   }
 
   async verifyCode(
@@ -156,30 +126,32 @@ export class UserPhonesService {
     phoneId: string,
     code: string,
   ): Promise<{ success: boolean; error?: string }> {
-    const pending = this.verificationCodes.get(phoneId);
-
-    if (!pending) {
-      return { success: false, error: 'No verification code found. Please request a new one.' };
-    }
-
-    if (Date.now() > pending.expires_at) {
-      this.verificationCodes.delete(phoneId);
-      return { success: false, error: 'Verification code has expired. Please request a new one.' };
-    }
-
-    if (pending.attempts >= 3) {
-      this.verificationCodes.delete(phoneId);
-      return { success: false, error: 'Too many attempts. Please request a new code.' };
-    }
-
-    if (pending.code !== code) {
-      pending.attempts++;
-      return { success: false, error: 'Invalid verification code' };
-    }
-
-    // Code is correct - verify the phone
     const supabase = this.supabaseService.getClient();
 
+    // Get the phone record
+    const { data: phone } = await supabase
+      .from('user_phones')
+      .select('*')
+      .eq('id', phoneId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!phone) {
+      return { success: false, error: 'Phone not found' };
+    }
+
+    // Use the verification service (provider-agnostic)
+    const result = await this.verificationService.verifyCode(
+      userId,
+      phone.phone_number,
+      code,
+    );
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'Invalid verification code' };
+    }
+
+    // Mark phone as verified in our database
     const { error } = await supabase
       .from('user_phones')
       .update({ is_verified: true })
@@ -187,14 +159,11 @@ export class UserPhonesService {
       .eq('user_id', userId);
 
     if (error) {
-      this.logger.error('Failed to verify phone:', error);
+      this.logger.error('Failed to update phone verification status:', error);
       return { success: false, error: 'Failed to verify phone' };
     }
 
-    // Clean up
-    this.verificationCodes.delete(phoneId);
-
-    this.logger.log(`Phone ${phoneId} verified for user ${userId}`);
+    this.logger.log(`Phone ${phoneId} verified for user ${userId} via ${this.verificationService.getProviderName()}`);
     return { success: true };
   }
 
