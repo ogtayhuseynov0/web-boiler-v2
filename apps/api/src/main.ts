@@ -25,9 +25,13 @@ async function bootstrap() {
   const port = configService.get<number>('port') || 4000;
   const frontendUrl = configService.get<string>('app.frontendUrl');
 
-  // Enable CORS for frontend
+  // Enable CORS for frontend and ElevenLabs
   app.enableCors({
-    origin: frontendUrl || 'http://localhost:3000',
+    origin: [
+      frontendUrl || 'http://localhost:3000',
+      'https://elevenlabs.io',
+      'https://api.elevenlabs.io',
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

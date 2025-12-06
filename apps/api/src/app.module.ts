@@ -20,6 +20,7 @@ import { BillingModule } from './billing/billing.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { JobsModule } from './jobs/jobs.module';
 import { UserPhonesModule } from './user-phones/user-phones.module';
+import { GroqLlmModule } from './groq-llm/groq-llm.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { UserPhonesModule } from './user-phones/user-phones.module';
     WebhooksModule,
     JobsModule,
     UserPhonesModule,
+    GroqLlmModule,
   ],
 })
 export class AppModule {}
