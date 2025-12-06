@@ -94,7 +94,7 @@ export class TwilioVerificationProvider extends PhoneVerificationProvider {
 
   async getVerifiedPhones(userId: string): Promise<PhoneIdentity[]> {
     try {
-      const supabase = this.supabaseService.getAdminClient();
+      const supabase = this.supabaseService.getClient();
 
       const { data, error } = await supabase
         .from('user_phones')
@@ -121,7 +121,7 @@ export class TwilioVerificationProvider extends PhoneVerificationProvider {
 
   async removePhone(userId: string, phone: string): Promise<VerificationResult> {
     try {
-      const supabase = this.supabaseService.getAdminClient();
+      const supabase = this.supabaseService.getClient();
 
       const { error } = await supabase
         .from('user_phones')
@@ -142,7 +142,7 @@ export class TwilioVerificationProvider extends PhoneVerificationProvider {
 
   async isPhoneInUse(phone: string, excludeUserId?: string): Promise<boolean> {
     try {
-      const supabase = this.supabaseService.getAdminClient();
+      const supabase = this.supabaseService.getClient();
 
       let query = supabase
         .from('user_phones')
@@ -163,7 +163,7 @@ export class TwilioVerificationProvider extends PhoneVerificationProvider {
   }
 
   private async markPhoneVerified(userId: string, phone: string): Promise<void> {
-    const supabase = this.supabaseService.getAdminClient();
+    const supabase = this.supabaseService.getClient();
 
     await supabase
       .from('user_phones')

@@ -19,7 +19,7 @@ export class SupabaseVerificationProvider extends PhoneVerificationProvider {
 
   async sendCode(userId: string, phone: string): Promise<SendCodeResult> {
     try {
-      const supabase = this.supabaseService.getAdminClient();
+      const supabase = this.supabaseService.getClient();
 
       // Generate OTP for phone verification
       // Using admin API to send OTP to the phone
@@ -57,7 +57,7 @@ export class SupabaseVerificationProvider extends PhoneVerificationProvider {
     code: string,
   ): Promise<VerifyCodeResult> {
     try {
-      const supabase = this.supabaseService.getAdminClient();
+      const supabase = this.supabaseService.getClient();
 
       // Verify the OTP
       const { data, error } = await supabase.auth.verifyOtp({
@@ -95,7 +95,7 @@ export class SupabaseVerificationProvider extends PhoneVerificationProvider {
 
   async getVerifiedPhones(userId: string): Promise<PhoneIdentity[]> {
     try {
-      const supabase = this.supabaseService.getAdminClient();
+      const supabase = this.supabaseService.getClient();
 
       // Get user's identities from auth.identities
       const { data: user, error } = await supabase.auth.admin.getUserById(userId);
@@ -139,7 +139,7 @@ export class SupabaseVerificationProvider extends PhoneVerificationProvider {
 
   async removePhone(userId: string, phone: string): Promise<VerificationResult> {
     try {
-      const supabase = this.supabaseService.getAdminClient();
+      const supabase = this.supabaseService.getClient();
 
       // Get user to check if this is their primary phone
       const { data: user, error: getUserError } =
@@ -186,7 +186,7 @@ export class SupabaseVerificationProvider extends PhoneVerificationProvider {
 
   async isPhoneInUse(phone: string, excludeUserId?: string): Promise<boolean> {
     try {
-      const supabase = this.supabaseService.getAdminClient();
+      const supabase = this.supabaseService.getClient();
 
       // Check if phone exists in auth.users
       const { data, error } = await supabase

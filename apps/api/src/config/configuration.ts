@@ -39,6 +39,7 @@ export default () => ({
       process.env.ELEVENLABS_DEFAULT_VOICE_ID || '21m00Tcm4TlvDq8ikWAM', // Rachel
     modelId: process.env.ELEVENLABS_MODEL_ID || 'eleven_monolingual_v1',
     agentId: process.env.ELEVENLABS_AGENT_ID,
+    webhookSecret: process.env.ELEVENLABS_WEBHOOK_SECRET,
   },
 
   openai: {
