@@ -167,6 +167,13 @@ export class MemoriesService {
     callId: string,
     messages: Array<{ role: string; content: string }>,
   ): Promise<Memory[]> {
+    this.logger.log(`Starting memory extraction for call ${callId} with ${messages.length} messages`);
+
+    if (!this.openaiService.isConfigured()) {
+      this.logger.warn('OpenAI not configured, skipping memory extraction');
+      return [];
+    }
+
     // Use OpenAI to extract memories from conversation
     const extractedMemories = await this.openaiService.extractMemories(
       messages.map((m) => ({
@@ -174,6 +181,8 @@ export class MemoriesService {
         content: m.content,
       })),
     );
+
+    this.logger.log(`OpenAI returned ${extractedMemories.length} memories`);
 
     const savedMemories: Memory[] = [];
 

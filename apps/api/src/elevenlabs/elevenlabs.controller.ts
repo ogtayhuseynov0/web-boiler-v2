@@ -202,4 +202,30 @@ export class ElevenLabsController {
 
     return { success: !!message, message_id: message?.id };
   }
+
+  @Post('link')
+  @ApiOperation({ summary: 'Link ElevenLabs conversation ID to call' })
+  async linkConversation(
+    @CurrentUser() user: User,
+    @Body() body: { call_id: string; conversation_id: string },
+  ) {
+    const { call_id, conversation_id } = body;
+
+    this.logger.log(`Linking conversation ${conversation_id} to call ${call_id}`);
+
+    const supabase = this.supabaseService.getClient();
+
+    const { error } = await supabase
+      .from('calls')
+      .update({ elevenlabs_conversation_id: conversation_id })
+      .eq('id', call_id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      this.logger.error('Failed to link conversation:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  }
 }

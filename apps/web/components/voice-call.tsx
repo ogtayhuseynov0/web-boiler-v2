@@ -123,9 +123,15 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
       const conversation = await Conversation.startSession({
         conversationToken: token,
         connectionType: "webrtc",
-        onConnect: () => {
+        onConnect: (props) => {
           setStatus("connected");
           toast.success("Connected!");
+
+          // Link ElevenLabs conversation ID with our call
+          const conversationId = (props as { conversationId?: string })?.conversationId;
+          if (conversationId && call_id) {
+            conversationApi.linkConversation(call_id, conversationId);
+          }
         },
         onDisconnect: () => {
           setStatus("disconnected");

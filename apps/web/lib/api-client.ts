@@ -283,6 +283,11 @@ export const conversationApi = {
     request<{ success?: boolean; message_id?: string }>(() =>
       api.post("/conversation/message", { call_id: callId, role, content })
     ),
+
+  linkConversation: (callId: string, conversationId: string) =>
+    request<{ success?: boolean }>(() =>
+      api.post("/conversation/link", { call_id: callId, conversation_id: conversationId })
+    ),
 };
 
 // Export the axios instance for custom requests

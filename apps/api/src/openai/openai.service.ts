@@ -143,6 +143,8 @@ Example output:
 If no important memories are found, return an empty array: []`;
 
     try {
+      this.logger.log(`Extracting memories from conversation (${conversationMessages.length} messages)`);
+
       const response = await this.client.chat.completions.create({
         model: this.model,
         messages: [
@@ -158,12 +160,17 @@ If no important memories are found, return an empty array: []`;
       });
 
       const content = response.choices[0]?.message?.content;
+      this.logger.log(`OpenAI response: ${content?.substring(0, 200)}...`);
+
       if (!content) return [];
 
       const parsed = JSON.parse(content);
-      return Array.isArray(parsed)
+      const memories = Array.isArray(parsed)
         ? parsed
         : parsed.memories || parsed.data || [];
+
+      this.logger.log(`Parsed ${memories.length} memories from response`);
+      return memories;
     } catch (error) {
       this.logger.error('Memory extraction failed:', error);
       return [];

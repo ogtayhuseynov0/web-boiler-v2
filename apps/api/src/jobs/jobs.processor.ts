@@ -55,6 +55,8 @@ export class JobsProcessor extends WorkerHost {
       // Get conversation messages
       const messages = await this.callsService.getMessages(callId);
 
+      this.logger.log(`Call ${callId} has ${messages.length} messages`);
+
       if (messages.length < 2) {
         this.logger.log(`Call ${callId} has insufficient messages for memory extraction`);
         return;
@@ -67,6 +69,9 @@ export class JobsProcessor extends WorkerHost {
           role: m.role,
           content: m.content,
         }));
+
+      this.logger.log(`Filtered to ${conversationMessages.length} conversation messages`);
+      this.logger.debug(`Messages: ${JSON.stringify(conversationMessages.slice(0, 3))}...`);
 
       // Extract and save memories
       const extractedMemories =
