@@ -1,97 +1,302 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Clock, Phone, User, Bot } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  Clock,
+  Phone,
+  User,
+  Bot,
+  Loader2,
+  Brain,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Calendar,
+} from "lucide-react";
 import Link from "next/link";
+import { callsApi, memoriesApi, Call, ConversationMessage, Memory } from "@/lib/api-client";
+
+function formatDuration(seconds: number): string {
+  if (!seconds) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatCost(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function formatDateTime(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const categoryColors: Record<string, string> = {
+  preference: "bg-blue-500/10 text-blue-500",
+  fact: "bg-green-500/10 text-green-500",
+  task: "bg-orange-500/10 text-orange-500",
+  reminder: "bg-purple-500/10 text-purple-500",
+  relationship: "bg-pink-500/10 text-pink-500",
+  other: "bg-gray-500/10 text-gray-500",
+};
+
+const statusColors: Record<string, string> = {
+  completed: "bg-green-500/10 text-green-500",
+  "in-progress": "bg-blue-500/10 text-blue-500",
+  initiated: "bg-yellow-500/10 text-yellow-500",
+  failed: "bg-red-500/10 text-red-500",
+};
 
 export default function CallDetailPage() {
   const params = useParams();
   const callId = params.id as string;
 
-  // TODO: Fetch call details from API
-  const call = null;
+  const [call, setCall] = useState<Call | null>(null);
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [memories, setMemories] = useState<Memory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCallDetails();
+  }, [callId]);
+
+  const fetchCallDetails = async () => {
+    setLoading(true);
+    setError(null);
+
+    const [callRes, memoriesRes] = await Promise.all([
+      callsApi.get(callId),
+      memoriesApi.list({ call_id: callId }),
+    ]);
+
+    if (callRes.error) {
+      setError(callRes.error);
+      setLoading(false);
+      return;
+    }
+
+    if (callRes.data) {
+      setCall(callRes.data.call);
+      setMessages(callRes.data.messages || []);
+    }
+
+    if (memoriesRes.data) {
+      setMemories(memoriesRes.data.memories || []);
+    }
+
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !call) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/calls">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Call Not Found</h1>
+            <p className="text-muted-foreground">{error || "This call does not exist"}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const conversationMessages = messages.filter(
+    (m) => m.role === "user" || m.role === "assistant"
+  );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/calls">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Call Details</h1>
-          <p className="text-muted-foreground">
-            Call ID: {callId}
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">
+              {call.direction === "inbound" ? "Incoming" : "Outgoing"} Call
+            </h1>
+            <Badge className={statusColors[call.status] || statusColors.completed}>
+              {call.status}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+            <Calendar className="h-3.5 w-3.5" />
+            {formatDateTime(call.started_at)}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Duration</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--:--</div>
+            <div className="text-2xl font-bold font-mono">
+              {formatDuration(call.duration_seconds || 0)}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Direction</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
+            {call.direction === "inbound" ? (
+              <ArrowDownLeft className="h-4 w-4 text-blue-500" />
+            ) : (
+              <ArrowUpRight className="h-4 w-4 text-green-500" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
+            <div className="text-2xl font-bold capitalize">{call.direction}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Cost</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCost(call.cost_cents || 0)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Messages</CardTitle>
             <Phone className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$0.00</div>
+            <div className="text-2xl font-bold">{conversationMessages.length}</div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Conversation Transcript</CardTitle>
-          <CardDescription>
-            Full transcript of your conversation
-          </CardDescription>
+          <CardTitle>Conversation</CardTitle>
+          <CardDescription>Full transcript of the call</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          {conversationMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Phone className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-medium">No transcript available</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Transcript will appear here once the call is completed
+                {call.status === "in-progress"
+                  ? "Transcript will appear once the call ends"
+                  : "No messages were recorded for this call"}
               </p>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              {conversationMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex gap-3 ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {message.role === "assistant" && (
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Bot className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                  {message.role === "user" && (
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Extracted Memories</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            Extracted Memories
+          </CardTitle>
           <CardDescription>
-            Important information extracted from this call
+            Information learned from this conversation
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              No memories extracted from this call
-            </p>
-          </div>
+          {memories.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                {call.status === "completed"
+                  ? "No important information was extracted from this call"
+                  : "Memories will be extracted after the call ends"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {memories.map((memory) => (
+                <div
+                  key={memory.id}
+                  className="flex items-start gap-3 rounded-lg border p-3"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm">{memory.content}</p>
+                    <div className="mt-2">
+                      <Badge
+                        variant="secondary"
+                        className={categoryColors[memory.category] || categoryColors.other}
+                      >
+                        {memory.category}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

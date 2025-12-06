@@ -174,7 +174,7 @@ export const callsApi = {
 
 // Memories API
 export const memoriesApi = {
-  list: (params?: { category?: string; search?: string; limit?: number; offset?: number }) =>
+  list: (params?: { category?: string; search?: string; call_id?: string; limit?: number; offset?: number }) =>
     request<{ memories: Memory[]; total: number }>(() => api.get("/memories", { params })),
 
   search: (query: string, limit?: number) =>

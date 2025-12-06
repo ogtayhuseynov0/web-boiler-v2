@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -23,15 +24,23 @@ import {
   Loader2,
   ArrowUpRight,
   ArrowDownLeft,
+  DollarSign,
+  ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import { callsApi, Call } from "@/lib/api-client";
 import { VoiceCall } from "@/components/voice-call";
 
 function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
+  if (!seconds) return "0:00";
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatCost(cents: number): string {
+  if (!cents) return "$0.00";
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 function formatDate(dateString: string): string {
@@ -49,6 +58,13 @@ function formatDate(dateString: string): string {
   }
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
+
+const statusColors: Record<string, string> = {
+  completed: "bg-green-500/10 text-green-500 border-green-500/20",
+  "in-progress": "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  initiated: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  failed: "bg-red-500/10 text-red-500 border-red-500/20",
+};
 
 export default function CallsPage() {
   const router = useRouter();
@@ -70,13 +86,18 @@ export default function CallsPage() {
     setLoading(false);
   };
 
-  const handleCallEnd = (callId: string, durationSeconds: number) => {
+  const handleCallEnd = () => {
     setShowCallDialog(false);
-    fetchCalls(); // Refresh call history
+    fetchCalls();
   };
 
   const totalDurationMins = Math.round(
     calls.reduce((sum, call) => sum + (call.duration_seconds || 0), 0) / 60
+  );
+
+  const totalSpentCents = calls.reduce(
+    (sum, call) => sum + (call.cost_cents || 0),
+    0
   );
 
   const thisMonthCalls = calls.filter((call) => {
@@ -97,13 +118,12 @@ export default function CallsPage() {
             View your call history and start new conversations
           </p>
         </div>
-        <Button onClick={() => setShowCallDialog(true)}>
+        <Button onClick={() => setShowCallDialog(true)} size="lg">
           <PhoneCall className="mr-2 h-4 w-4" />
           Start Call
         </Button>
       </div>
 
-      {/* Voice Call Dialog */}
       <Dialog open={showCallDialog} onOpenChange={setShowCallDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -113,7 +133,7 @@ export default function CallsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Calls</CardTitle>
@@ -131,6 +151,16 @@ export default function CallsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalDurationMins} min</div>
+            <p className="text-xs text-muted-foreground">All time</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCost(totalSpentCents)}</div>
             <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
@@ -162,49 +192,71 @@ export default function CallsPage() {
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Phone className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-medium">No calls yet</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Start a conversation by clicking &quot;Start Call&quot; above
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                Start your first conversation by clicking &quot;Start Call&quot; above.
+                The AI assistant will remember what you discuss.
               </p>
+              <Button
+                className="mt-4"
+                onClick={() => setShowCallDialog(true)}
+              >
+                <PhoneCall className="mr-2 h-4 w-4" />
+                Make Your First Call
+              </Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="divide-y">
               {calls.map((call) => (
                 <div
                   key={call.id}
-                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                  className="flex items-center gap-4 py-4 hover:bg-muted/50 -mx-4 px-4 cursor-pointer transition-colors rounded-lg"
                   onClick={() => router.push(`/calls/${call.id}`)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`p-2 rounded-full ${
-                        call.direction === "inbound"
-                          ? "bg-blue-500/10 text-blue-500"
-                          : "bg-green-500/10 text-green-500"
-                      }`}
-                    >
-                      {call.direction === "inbound" ? (
-                        <ArrowDownLeft className="h-4 w-4" />
-                      ) : (
-                        <ArrowUpRight className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {call.direction === "inbound" ? "Incoming" : "Outgoing"}{" "}
-                        Call
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(call.started_at)}
-                      </p>
-                    </div>
+                  <div
+                    className={`flex-shrink-0 p-2.5 rounded-full ${
+                      call.direction === "inbound"
+                        ? "bg-blue-500/10"
+                        : "bg-green-500/10"
+                    }`}
+                  >
+                    {call.direction === "inbound" ? (
+                      <ArrowDownLeft className="h-5 w-5 text-blue-500" />
+                    ) : (
+                      <ArrowUpRight className="h-5 w-5 text-green-500" />
+                    )}
                   </div>
-                  <div className="text-right">
-                    <p className="font-mono text-sm">
-                      {formatDuration(call.duration_seconds || 0)}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">
+                        {call.direction === "inbound" ? "Incoming" : "Outgoing"} Call
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${statusColors[call.status] || ""}`}
+                      >
+                        {call.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {formatDate(call.started_at)}
                     </p>
-                    <p className="text-xs text-muted-foreground capitalize">
-                      {call.status}
-                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span className="font-mono">
+                        {formatDuration(call.duration_seconds || 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground w-16">
+                      <DollarSign className="h-4 w-4" />
+                      <span className="font-mono">
+                        {formatCost(call.cost_cents || 0).replace("$", "")}
+                      </span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
                   </div>
                 </div>
               ))}

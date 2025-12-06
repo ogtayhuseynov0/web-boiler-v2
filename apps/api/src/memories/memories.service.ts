@@ -67,6 +67,7 @@ export class MemoriesService {
     options?: {
       category?: Memory['category'];
       search?: string;
+      callId?: string;
       limit?: number;
       offset?: number;
     },
@@ -88,6 +89,10 @@ export class MemoriesService {
 
     if (options?.search) {
       query = query.ilike('content', `%${options.search}%`);
+    }
+
+    if (options?.callId) {
+      query = query.eq('call_id', options.callId);
     }
 
     const { data: memories, error, count } = await query.range(

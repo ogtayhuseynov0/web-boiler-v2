@@ -24,12 +24,14 @@ export class MemoriesController {
     @CurrentUser() user: { id: string },
     @Query('category') category?: Memory['category'],
     @Query('search') search?: string,
+    @Query('call_id') callId?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
     const result = await this.memoriesService.getMemoriesByUserId(user.id, {
       category,
       search,
+      callId,
       limit: limit ? parseInt(limit, 10) : 50,
       offset: offset ? parseInt(offset, 10) : 0,
     });
