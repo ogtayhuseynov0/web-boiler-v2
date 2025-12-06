@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Phone, Plus, Trash2, CheckCircle, Star } from "lucide-react";
 import { profileApi, userPhonesApi, Profile, UserPhone } from "@/lib/api-client";
 import { toast } from "sonner";
+import { CountrySelector, countries, Country } from "@/components/ui/country-selector";
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -22,6 +23,7 @@ export default function SettingsPage() {
   // Phone verification state
   const [newPhone, setNewPhone] = useState("");
   const [addingPhone, setAddingPhone] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<Country>(countries[0]);
   const [verifyingPhoneId, setVerifyingPhoneId] = useState<string | null>(null);
   const [verificationCode, setVerificationCode] = useState("");
   const [sendingCode, setSendingCode] = useState(false);
@@ -66,11 +68,17 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
+  const toE164 = (dialCode: string, phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    return `${dialCode}${digits}`;
+  };
+
   const handleAddPhone = async () => {
     if (!newPhone.trim()) return;
 
+    const e164Phone = toE164(selectedCountry.dialCode, newPhone);
     setAddingPhone(true);
-    const res = await userPhonesApi.add(newPhone);
+    const res = await userPhonesApi.add(e164Phone);
 
     if (res.data?.success && res.data.phone) {
       setPhones([...phones, res.data.phone]);
@@ -305,11 +313,15 @@ export default function SettingsPage() {
 
           {/* Add new phone */}
           <div className="flex gap-2">
+            <CountrySelector
+              value={selectedCountry}
+              onChange={setSelectedCountry}
+            />
             <Input
               value={newPhone}
               onChange={(e) => setNewPhone(e.target.value)}
-              placeholder="+1 (555) 123-4567"
-              className="max-w-[250px]"
+              placeholder="555 123 4567"
+              className="max-w-[180px]"
             />
             <Button
               onClick={handleAddPhone}

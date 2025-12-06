@@ -35,7 +35,7 @@ interface TwilioStatusWebhook extends TwilioVoiceWebhook {
 }
 
 @ApiTags('webhooks')
-@Controller('api/webhooks/twilio')
+@Controller('webhooks/twilio')
 export class TwilioWebhookController {
   private readonly logger = new Logger(TwilioWebhookController.name);
 

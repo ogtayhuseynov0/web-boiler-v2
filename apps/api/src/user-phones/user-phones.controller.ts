@@ -13,7 +13,7 @@ import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('user-phones')
-@Controller('api/user-phones')
+@Controller('user-phones')
 @UseGuards(SupabaseAuthGuard)
 @ApiBearerAuth()
 export class UserPhonesController {

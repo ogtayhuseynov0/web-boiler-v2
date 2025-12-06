@@ -11,7 +11,7 @@ import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('billing')
-@Controller('api/billing')
+@Controller('billing')
 @UseGuards(SupabaseAuthGuard)
 @ApiBearerAuth()
 export class BillingController {

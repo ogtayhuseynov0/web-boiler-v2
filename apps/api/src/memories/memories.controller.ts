@@ -12,7 +12,7 @@ import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('memories')
-@Controller('api/memories')
+@Controller('memories')
 @UseGuards(SupabaseAuthGuard)
 @ApiBearerAuth()
 export class MemoriesController {
