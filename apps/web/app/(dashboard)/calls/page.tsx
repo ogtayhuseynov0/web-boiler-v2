@@ -205,7 +205,7 @@ export default function CallsPage() {
               </Button>
             </div>
           ) : (
-            <div className="divide-y h-full overflow-y-auto">
+            <div className="divide-y h-full overflow-y-auto overflow-x-hidden">
               {calls.map((call) => (
                 <div
                   key={call.id}
