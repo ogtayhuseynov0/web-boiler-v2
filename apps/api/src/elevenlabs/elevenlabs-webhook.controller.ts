@@ -18,20 +18,29 @@ import { SupabaseService } from '../supabase/supabase.service';
 
 interface ElevenLabsWebhookPayload {
   type: string;
-  event_id: string;
-  timestamp: string;
-  data: {
-    conversation_id: string;
-    agent_id: string;
+  event_id?: string;
+  timestamp?: string;
+  conversation_id?: string;
+  data?: {
+    conversation_id?: string;
+    agent_id?: string;
     status?: string;
     duration_seconds?: number;
     transcript?: Array<{
       role: 'user' | 'agent';
       message: string;
-      timestamp: number;
+      timestamp?: number;
     }>;
     metadata?: Record<string, string>;
   };
+  // post_call_transcription fields
+  transcript?: Array<{
+    role: 'user' | 'agent';
+    message: string;
+    time_in_call_secs?: number;
+  }>;
+  metadata?: Record<string, string>;
+  call_duration_secs?: number;
 }
 
 interface RequestWithRawBody extends Request {
@@ -90,6 +99,7 @@ export class ElevenLabsWebhookController {
           break;
 
         case 'conversation.transcript':
+        case 'post_call_transcription':
           await this.handleTranscript(payload);
           break;
 
@@ -241,9 +251,16 @@ export class ElevenLabsWebhookController {
   private async handleTranscript(
     payload: ElevenLabsWebhookPayload,
   ): Promise<void> {
-    const { conversation_id, transcript, metadata } = payload.data;
+    // Handle both nested (data.transcript) and top-level (transcript) structures
+    const conversationId = payload.conversation_id || payload.data?.conversation_id;
+    const transcript = payload.transcript || payload.data?.transcript;
+    const metadata = payload.metadata || payload.data?.metadata;
+    const durationSeconds = payload.call_duration_secs || payload.data?.duration_seconds;
+
+    this.logger.log(`Processing transcript for conversation: ${conversationId}, entries: ${transcript?.length || 0}`);
 
     if (!transcript || transcript.length === 0) {
+      this.logger.warn('No transcript entries in payload');
       return;
     }
 
@@ -251,22 +268,24 @@ export class ElevenLabsWebhookController {
 
     // Find the call
     let callId = metadata?.call_id;
+    let userId: string | null = null;
 
-    if (!callId) {
+    if (!callId && conversationId) {
       const { data: call } = await supabase
         .from('calls')
-        .select('id')
-        .eq('elevenlabs_conversation_id', conversation_id)
+        .select('id, user_id')
+        .eq('elevenlabs_conversation_id', conversationId)
         .single();
 
       if (call) {
         callId = call.id;
+        userId = call.user_id;
       }
     }
 
     if (!callId) {
       this.logger.warn(
-        `No call found for transcript, conversation: ${conversation_id}`,
+        `No call found for transcript, conversation: ${conversationId}`,
       );
       return;
     }
@@ -283,5 +302,40 @@ export class ElevenLabsWebhookController {
     this.logger.log(
       `Stored ${transcript.length} transcript entries for call ${callId}`,
     );
+
+    // If this is post_call_transcription, also update call and queue memory extraction
+    if (payload.type === 'post_call_transcription') {
+      // Update call with duration
+      if (durationSeconds) {
+        const costCents = Math.ceil(durationSeconds / 60) * 10;
+        await supabase
+          .from('calls')
+          .update({
+            status: 'completed',
+            duration_seconds: durationSeconds,
+            cost_cents: costCents,
+            ended_at: new Date().toISOString(),
+          })
+          .eq('id', callId);
+
+        // Deduct balance
+        if (userId && costCents > 0) {
+          await supabase.rpc('deduct_balance', {
+            p_user_id: userId,
+            p_amount: costCents,
+            p_call_id: callId,
+          });
+        }
+      }
+
+      // Queue memory extraction
+      if (userId) {
+        await this.queueService.addJob('extract-memories', {
+          callId: callId,
+          userId: userId,
+        });
+        this.logger.log(`Queued memory extraction for call ${callId}`);
+      }
+    }
   }
 }
