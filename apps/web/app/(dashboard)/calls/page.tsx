@@ -110,8 +110,8 @@ export default function CallsPage() {
   }).length;
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full gap-8">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-3xl font-bold">Calls</h1>
           <p className="text-muted-foreground">
@@ -133,7 +133,7 @@ export default function CallsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-4 flex-shrink-0">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Calls</CardTitle>
@@ -176,14 +176,14 @@ export default function CallsPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardHeader className="flex-shrink-0">
           <CardTitle>Call History</CardTitle>
           <CardDescription>
             Your recent conversations with the AI assistant
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -205,7 +205,7 @@ export default function CallsPage() {
               </Button>
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y h-full overflow-y-auto">
               {calls.map((call) => (
                 <div
                   key={call.id}

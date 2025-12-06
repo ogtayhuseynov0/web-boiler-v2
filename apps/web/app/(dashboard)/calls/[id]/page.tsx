@@ -137,8 +137,8 @@ export default function CallDetailPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col h-full gap-6">
+      <div className="flex items-center gap-4 flex-shrink-0">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/calls">
             <ArrowLeft className="h-4 w-4" />
@@ -160,7 +160,7 @@ export default function CallDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-4 flex-shrink-0">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Duration</CardTitle>
@@ -205,12 +205,12 @@ export default function CallDetailPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardHeader className="flex-shrink-0">
           <CardTitle>Conversation</CardTitle>
           <CardDescription>Full transcript of the call</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 overflow-hidden">
           {conversationMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Phone className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -222,7 +222,7 @@ export default function CallDetailPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 h-full overflow-y-auto pr-2">
               {conversationMessages.map((message) => (
                 <div
                   key={message.id}
@@ -256,7 +256,7 @@ export default function CallDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="flex-shrink-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5" />
