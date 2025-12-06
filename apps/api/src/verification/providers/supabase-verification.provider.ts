@@ -21,27 +21,17 @@ export class SupabaseVerificationProvider extends PhoneVerificationProvider {
     try {
       const supabase = this.supabaseService.getClient();
 
-      // Generate OTP for phone verification
-      // Using admin API to send OTP to the phone
-      const { error } = await supabase.auth.admin.generateLink({
-        type: 'phone_change',
+      // Use signInWithOtp to send verification code
+      const { error } = await supabase.auth.signInWithOtp({
         phone,
+        options: {
+          shouldCreateUser: false,
+        },
       });
 
       if (error) {
-        // If generateLink doesn't work for phone, use signInWithOtp approach
-        // We'll store a pending verification in our DB and use Supabase's OTP
-        const { error: otpError } = await supabase.auth.signInWithOtp({
-          phone,
-          options: {
-            shouldCreateUser: false,
-          },
-        });
-
-        if (otpError) {
-          this.logger.error(`Failed to send OTP: ${otpError.message}`);
-          return { success: false, error: otpError.message };
-        }
+        this.logger.error(`Failed to send OTP: ${error.message}`);
+        return { success: false, error: error.message };
       }
 
       return { success: true };
@@ -124,7 +114,7 @@ export class SupabaseVerificationProvider extends PhoneVerificationProvider {
               id: identity.id,
               phone: identity.identity_data.phone,
               provider: 'supabase',
-              createdAt: new Date(identity.created_at),
+              createdAt: identity.created_at ? new Date(identity.created_at) : new Date(),
             });
           }
         }

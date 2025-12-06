@@ -3,7 +3,6 @@ import {
   Post,
   Body,
   Headers,
-  RawBodyRequest,
   Req,
   HttpCode,
   Logger,
@@ -11,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { Request } from 'express';
+import type { Request } from 'express';
 import * as crypto from 'crypto';
 import { CallsService } from '../calls/calls.service';
 import { QueueService } from '../queue/queue.service';
@@ -35,6 +34,10 @@ interface ElevenLabsWebhookPayload {
   };
 }
 
+interface RequestWithRawBody extends Request {
+  rawBody?: string;
+}
+
 @ApiTags('webhooks')
 @Controller('elevenlabs')
 export class ElevenLabsWebhookController {
@@ -55,12 +58,12 @@ export class ElevenLabsWebhookController {
   @HttpCode(200)
   @ApiExcludeEndpoint()
   async handleWebhook(
-    @Req() req: RawBodyRequest<Request>,
+    @Req() req: RequestWithRawBody,
     @Headers('x-elevenlabs-signature') signature: string,
     @Body() payload: ElevenLabsWebhookPayload,
   ) {
-    // Verify HMAC signature
-    if (!this.verifySignature(req.rawBody, signature)) {
+    // Verify HMAC signature (skip if no secret configured - for development)
+    if (this.webhookSecret && !this.verifySignature(req.rawBody, signature)) {
       this.logger.warn('Invalid webhook signature');
       throw new UnauthorizedException('Invalid signature');
     }
@@ -95,27 +98,30 @@ export class ElevenLabsWebhookController {
   }
 
   private verifySignature(
-    rawBody: Buffer | undefined,
+    rawBody: string | undefined,
     signature: string,
   ): boolean {
-    if (!this.webhookSecret) {
-      this.logger.warn('Webhook secret not configured, skipping verification');
-      return true; // Allow in development
-    }
-
     if (!rawBody || !signature) {
       return false;
     }
 
-    const expectedSignature = crypto
-      .createHmac('sha256', this.webhookSecret)
-      .update(rawBody)
-      .digest('hex');
+    try {
+      const expectedSignature = crypto
+        .createHmac('sha256', this.webhookSecret)
+        .update(rawBody)
+        .digest('hex');
 
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature),
-    );
+      // Handle signature with or without prefix (e.g., "sha256=...")
+      const cleanSignature = signature.replace(/^sha256=/, '');
+
+      return crypto.timingSafeEqual(
+        Buffer.from(cleanSignature),
+        Buffer.from(expectedSignature),
+      );
+    } catch (error) {
+      this.logger.error('Signature verification error:', error);
+      return false;
+    }
   }
 
   private async handleConversationInitiated(

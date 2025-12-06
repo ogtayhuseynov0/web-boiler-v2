@@ -14,8 +14,8 @@ import * as twilio from 'twilio';
 export class TwilioVerificationProvider extends PhoneVerificationProvider {
   readonly name = 'twilio';
   private readonly logger = new Logger(TwilioVerificationProvider.name);
-  private twilioClient: twilio.Twilio;
-  private verifyServiceSid: string;
+  private twilioClient: twilio.Twilio | null = null;
+  private verifyServiceSid: string | null = null;
 
   constructor(
     private configService: ConfigService,
@@ -25,9 +25,8 @@ export class TwilioVerificationProvider extends PhoneVerificationProvider {
 
     const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
     const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
-    this.verifyServiceSid = this.configService.get<string>(
-      'TWILIO_VERIFY_SERVICE_SID',
-    );
+    this.verifyServiceSid =
+      this.configService.get<string>('TWILIO_VERIFY_SERVICE_SID') || null;
 
     if (accountSid && authToken) {
       this.twilioClient = twilio.default(accountSid, authToken);
@@ -156,7 +155,7 @@ export class TwilioVerificationProvider extends PhoneVerificationProvider {
 
       const { data } = await query.limit(1);
 
-      return data && data.length > 0;
+      return !!(data && data.length > 0);
     } catch (error) {
       return false;
     }
