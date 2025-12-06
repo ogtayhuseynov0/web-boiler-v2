@@ -15,6 +15,7 @@ export class ElevenLabsService implements OnModuleInit {
   private apiKey: string;
   private defaultVoiceId: string;
   private modelId: string;
+  private agentId: string;
   private readonly baseUrl = 'https://api.elevenlabs.io/v1';
 
   constructor(
@@ -28,6 +29,8 @@ export class ElevenLabsService implements OnModuleInit {
       this.configService.get<string>('elevenlabs.defaultVoiceId') || '';
     this.modelId =
       this.configService.get<string>('elevenlabs.modelId') || 'eleven_turbo_v2';
+    this.agentId =
+      this.configService.get<string>('elevenlabs.agentId') || '';
 
     if (!this.apiKey) {
       this.logger.warn(
@@ -39,8 +42,86 @@ export class ElevenLabsService implements OnModuleInit {
     this.logger.log('ElevenLabs service initialized');
   }
 
+  getAgentId(): string {
+    return this.agentId;
+  }
+
   isConfigured(): boolean {
     return !!this.apiKey;
+  }
+
+  async getSignedUrl(agentId?: string): Promise<string | null> {
+    if (!this.apiKey) {
+      this.logger.error('ElevenLabs API key not configured');
+      return null;
+    }
+
+    const targetAgentId = agentId || this.agentId;
+    if (!targetAgentId) {
+      this.logger.error('No agent ID provided');
+      return null;
+    }
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/convai/conversation/get-signed-url?agent_id=${targetAgentId}`,
+        {
+          method: 'GET',
+          headers: {
+            'xi-api-key': this.apiKey,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        this.logger.error(`Failed to get signed URL: ${error}`);
+        return null;
+      }
+
+      const data = await response.json();
+      return data.signed_url;
+    } catch (error) {
+      this.logger.error('Failed to get signed URL:', error);
+      return null;
+    }
+  }
+
+  async getConversationToken(agentId?: string): Promise<string | null> {
+    if (!this.apiKey) {
+      this.logger.error('ElevenLabs API key not configured');
+      return null;
+    }
+
+    const targetAgentId = agentId || this.agentId;
+    if (!targetAgentId) {
+      this.logger.error('No agent ID provided');
+      return null;
+    }
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/convai/conversation/token?agent_id=${targetAgentId}`,
+        {
+          method: 'GET',
+          headers: {
+            'xi-api-key': this.apiKey,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        this.logger.error(`Failed to get conversation token: ${error}`);
+        return null;
+      }
+
+      const data = await response.json();
+      return data.token;
+    } catch (error) {
+      this.logger.error('Failed to get conversation token:', error);
+      return null;
+    }
   }
 
   async generateSpeech(

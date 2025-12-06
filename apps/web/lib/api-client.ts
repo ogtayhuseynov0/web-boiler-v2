@@ -250,5 +250,40 @@ export const healthApi = {
   check: () => request<{ status: string }>(() => api.get("/health")),
 };
 
+// Conversation API (ElevenLabs)
+export const conversationApi = {
+  getSignedUrl: () =>
+    request<{ signed_url?: string; error?: string }>(() =>
+      api.get("/conversation/signed-url")
+    ),
+
+  getToken: () =>
+    request<{ token?: string; error?: string }>(() =>
+      api.get("/conversation/token")
+    ),
+
+  start: () =>
+    request<{
+      token?: string;
+      call_id?: string;
+      agent_id?: string;
+      context?: { user_name: string; memories: string };
+      error?: string;
+    }>(() => api.post("/conversation/start")),
+
+  end: (callId: string, durationSeconds: number) =>
+    request<{ success?: boolean; cost_cents?: number }>(() =>
+      api.post("/conversation/end", {
+        call_id: callId,
+        duration_seconds: durationSeconds,
+      })
+    ),
+
+  storeMessage: (callId: string, role: "user" | "assistant", content: string) =>
+    request<{ success?: boolean; message_id?: string }>(() =>
+      api.post("/conversation/message", { call_id: callId, role, content })
+    ),
+};
+
 // Export the axios instance for custom requests
 export { api };
