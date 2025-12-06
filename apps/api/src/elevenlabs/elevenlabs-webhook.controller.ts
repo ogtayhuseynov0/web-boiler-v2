@@ -84,8 +84,9 @@ export class ElevenLabsWebhookController {
     }
     */
 
+    const convId = payload.conversation_id || payload.data?.conversation_id;
     this.logger.log(
-      `Received ElevenLabs webhook: ${payload.type} for conversation ${payload.data.conversation_id}`,
+      `Received ElevenLabs webhook: ${payload.type} for conversation ${convId}`,
     );
 
     try {
@@ -144,7 +145,8 @@ export class ElevenLabsWebhookController {
   private async handleConversationInitiated(
     payload: ElevenLabsWebhookPayload,
   ): Promise<void> {
-    const { conversation_id, metadata } = payload.data;
+    const conversation_id = payload.conversation_id || payload.data?.conversation_id;
+    const metadata = payload.metadata || payload.data?.metadata;
 
     this.logger.log(`Conversation initiated: ${conversation_id}`);
 
@@ -164,8 +166,10 @@ export class ElevenLabsWebhookController {
   private async handleConversationEnded(
     payload: ElevenLabsWebhookPayload,
   ): Promise<void> {
-    const { conversation_id, duration_seconds, metadata, transcript } =
-      payload.data;
+    const conversation_id = payload.conversation_id || payload.data?.conversation_id;
+    const duration_seconds = payload.call_duration_secs || payload.data?.duration_seconds;
+    const metadata = payload.metadata || payload.data?.metadata;
+    const transcript = payload.transcript || payload.data?.transcript;
 
     this.logger.log(
       `Conversation ended: ${conversation_id}, duration: ${duration_seconds}s`,
