@@ -294,17 +294,21 @@ export class ElevenLabsWebhookController {
       return;
     }
 
-    // Store transcript entries
+    // Store transcript entries (skip entries with empty content)
+    let storedCount = 0;
     for (const entry of transcript) {
-      await this.callsService.addMessage(
-        callId,
-        entry.role === 'agent' ? 'assistant' : 'user',
-        entry.message,
-      );
+      if (entry.message && entry.message.trim()) {
+        await this.callsService.addMessage(
+          callId,
+          entry.role === 'agent' ? 'assistant' : 'user',
+          entry.message,
+        );
+        storedCount++;
+      }
     }
 
     this.logger.log(
-      `Stored ${transcript.length} transcript entries for call ${callId}`,
+      `Stored ${storedCount}/${transcript.length} transcript entries for call ${callId}`,
     );
 
     // If this is post_call_transcription, also update call and queue memory extraction
