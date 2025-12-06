@@ -1,23 +1,36 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, ArrowLeft, Mail, KeyRound } from "lucide-react";
+import { Loader2, ArrowLeft, Phone, KeyRound } from "lucide-react";
+import { CountrySelector, countries, Country } from "@/components/ui/country-selector";
 
-type Step = "email" | "otp";
+type Step = "phone" | "otp";
+
+function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+}
+
+function toE164(dialCode: string, phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return `${dialCode}${digits}`;
+}
 
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
 
-  const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<Step>("phone");
+  const [country, setCountry] = useState<Country>(countries[0]); // Default to US
+  const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,16 +40,18 @@ function LoginPageContent() {
     setError(null);
     setLoading(true);
 
-    if (!email || !email.includes("@")) {
-      setError("Please enter a valid email address");
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 6) {
+      setError("Please enter a valid phone number");
       setLoading(false);
       return;
     }
 
     const supabase = createClient();
+    const e164Phone = toE164(country.dialCode, phone);
 
     const { error } = await supabase.auth.signInWithOtp({
-      email: email,
+      phone: e164Phone,
     });
 
     if (error) {
@@ -61,11 +76,12 @@ function LoginPageContent() {
     }
 
     const supabase = createClient();
+    const e164Phone = toE164(country.dialCode, phone);
 
     const { error } = await supabase.auth.verifyOtp({
-      email: email,
+      phone: e164Phone,
       token: otp,
-      type: "email",
+      type: "sms",
     });
 
     if (error) {
@@ -83,9 +99,10 @@ function LoginPageContent() {
     setLoading(true);
 
     const supabase = createClient();
+    const e164Phone = toE164(country.dialCode, phone);
 
     const { error } = await supabase.auth.signInWithOtp({
-      email: email,
+      phone: e164Phone,
     });
 
     if (error) {
@@ -100,27 +117,27 @@ function LoginPageContent() {
       <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-sm p-8 shadow-xl shadow-black/5 dark:border-border/50 dark:bg-card/80 dark:shadow-black/10">
         <div className="text-center mb-8">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-5">
-            {step === "email" ? (
-              <Mail className="h-7 w-7 text-primary" />
+            {step === "phone" ? (
+              <Phone className="h-7 w-7 text-primary" />
             ) : (
               <KeyRound className="h-7 w-7 text-primary" />
             )}
           </div>
           <h1 className="text-2xl font-bold">
-            {step === "email" ? "Welcome back" : "Enter verification code"}
+            {step === "phone" ? "Welcome to Ringy" : "Enter verification code"}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            {step === "email" ? (
-              "Sign in to your account with your email"
+            {step === "phone" ? (
+              "Sign in with your phone number"
             ) : (
               <>
-                We sent a code to <span className="font-semibold text-foreground">{email}</span>
+                We sent a code to <span className="font-semibold text-foreground">{country.dialCode} {phone}</span>
               </>
             )}
           </p>
         </div>
 
-        {step === "email" && (
+        {step === "phone" && (
           <form onSubmit={handleSendOtp} className="space-y-5">
             {error && (
               <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
@@ -129,23 +146,31 @@ function LoginPageContent() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-                autoComplete="email"
-              />
+              <Label htmlFor="phone">Phone Number</Label>
+              <div className="flex gap-2">
+                <CountrySelector
+                  value={country}
+                  onChange={setCountry}
+                  disabled={loading}
+                />
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="555 123 4567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s-]/g, ""))}
+                  required
+                  disabled={loading}
+                  autoComplete="tel"
+                  className="flex-1"
+                />
+              </div>
               <p className="text-xs text-muted-foreground">
-                We&apos;ll send you a verification code
+                We&apos;ll send you a verification code via SMS
               </p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading || !email}>
+            <Button type="submit" className="w-full" disabled={loading || phone.replace(/\D/g, "").length < 6}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -198,14 +223,14 @@ function LoginPageContent() {
               <button
                 type="button"
                 onClick={() => {
-                  setStep("email");
+                  setStep("phone");
                   setOtp("");
                   setError(null);
                 }}
                 className="flex items-center text-muted-foreground hover:text-primary transition-colors"
               >
                 <ArrowLeft className="mr-1 h-4 w-4" />
-                Change email
+                Change number
               </button>
               <button
                 type="button"
@@ -219,13 +244,6 @@ function LoginPageContent() {
           </form>
         )}
       </div>
-
-      <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-primary hover:text-primary/80 transition-colors">
-          Sign up
-        </Link>
-      </p>
     </div>
   );
 }
