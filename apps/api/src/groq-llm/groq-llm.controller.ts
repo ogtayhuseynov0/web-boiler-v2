@@ -20,6 +20,18 @@ export class GroqLlmController {
 
   constructor(private readonly groqLlmService: GroqLlmService) {}
 
+  private extractLastUserMessage(
+    messages: Array<{ role: string; content?: any }>,
+  ): string {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user' && messages[i].content) {
+        const content = messages[i].content;
+        return typeof content === 'string' ? content : JSON.stringify(content);
+      }
+    }
+    return '';
+  }
+
   @Post('completions')
   @HttpCode(200)
   @ApiExcludeEndpoint()
@@ -47,8 +59,31 @@ export class GroqLlmController {
         res.setHeader('Connection', 'keep-alive');
         res.setHeader('X-Accel-Buffering', 'no');
 
+        // Extract user_id and last user message for memory search
+        const userId = request.user_id;
+        const lastUserMessage = this.extractLastUserMessage(request.messages);
+
+        // Search memories before starting stream
+        let memories: Awaited<
+          ReturnType<typeof this.groqLlmService.searchMemoriesForQuery>
+        > = [];
+
+        if (userId && lastUserMessage) {
+          this.logger.log(
+            `[PERF] Starting memory search for user ${userId} | query: "${lastUserMessage.substring(0, 50)}..."`,
+          );
+          memories = await this.groqLlmService.searchMemoriesForQuery(
+            userId,
+            lastUserMessage,
+          );
+        }
+
+        // Get the LLM response with memories injected
         const { stream, requestStartTime } =
-          await this.groqLlmService.createChatCompletionStream(request);
+          await this.groqLlmService.createChatCompletionStreamWithMemories(
+            request,
+            memories,
+          );
 
         let firstChunkReceived = false;
         let chunkCount = 0;
@@ -57,7 +92,7 @@ export class GroqLlmController {
           if (!firstChunkReceived) {
             const ttfb = performance.now() - requestStartTime;
             this.logger.log(
-              `[PERF] Time to first byte (TTFB): ${ttfb.toFixed(2)}ms`,
+              `[PERF] Time to first byte (TTFB): ${ttfb.toFixed(2)}ms | memories: ${memories.length}`,
             );
             firstChunkReceived = true;
           }
@@ -72,7 +107,7 @@ export class GroqLlmController {
 
         const totalDuration = performance.now() - requestReceivedAt;
         this.logger.log(
-          `[PERF] Stream complete | chunks: ${chunkCount} | total: ${totalDuration.toFixed(2)}ms`,
+          `[PERF] Stream complete | chunks: ${chunkCount} | memories: ${memories.length} | total: ${totalDuration.toFixed(2)}ms`,
         );
       } else {
         // Handle non-streaming response

@@ -7,6 +7,7 @@ import {
   ChatCompletionChunk,
   ChatCompletion,
 } from 'openai/resources/chat/completions';
+import { MemoriesService, Memory } from '../memories/memories.service';
 
 export interface ChatCompletionRequest {
   messages: ChatCompletionMessageParam[];
@@ -26,7 +27,10 @@ export class GroqLlmService implements OnModuleInit {
   private client: OpenAI;
   private defaultModel: string;
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private memoriesService: MemoriesService,
+  ) {}
 
   onModuleInit() {
     const apiKey = this.configService.get<string>('GROQ_API_KEY');
@@ -69,6 +73,13 @@ export class GroqLlmService implements OnModuleInit {
     if (elevenlabs_extra_body) {
       this.logger.debug(
         `ElevenLabs extra body: ${JSON.stringify(elevenlabs_extra_body)}`,
+      );
+    }
+
+    // Log tools if present
+    if (openaiRequest.tools && openaiRequest.tools.length > 0) {
+      this.logger.log(
+        `[DEBUG] Tools in request: ${openaiRequest.tools.map((t: any) => t.function?.name || 'unknown').join(', ')}`,
       );
     }
 
@@ -131,5 +142,75 @@ export class GroqLlmService implements OnModuleInit {
     );
 
     return completion;
+  }
+
+  async searchMemoriesForQuery(
+    userId: string,
+    query: string,
+  ): Promise<Memory[]> {
+    if (!userId) {
+      this.logger.debug('No user_id provided, skipping memory search');
+      return [];
+    }
+
+    const searchStart = performance.now();
+    const memories = await this.memoriesService.searchSimilarMemories(
+      userId,
+      query,
+      5, // Get top 5 relevant memories
+    );
+    const searchDuration = performance.now() - searchStart;
+
+    this.logger.log(
+      `[PERF] Memory search completed in ${searchDuration.toFixed(2)}ms | found: ${memories.length}`,
+    );
+
+    return memories;
+  }
+
+  injectMemoriesIntoMessages(
+    messages: ChatCompletionMessageParam[],
+    memories: Memory[],
+  ): ChatCompletionMessageParam[] {
+    if (memories.length === 0) {
+      return messages;
+    }
+
+    const memoriesContext = memories
+      .map((m) => `- ${m.content}`)
+      .join('\n');
+
+    const memorySystemMessage = `\n\n[MEMORY CONTEXT - Information you know about this user from past conversations]:\n${memoriesContext}\n\n[IMPORTANT: This is background context only. Respond naturally in conversation. Never attempt to call functions or tools based on this context.]`;
+
+    // Find the system message and append memories
+    const updatedMessages = messages.map((msg) => {
+      if (msg.role === 'system' && typeof msg.content === 'string') {
+        return {
+          ...msg,
+          content: msg.content + memorySystemMessage,
+        };
+      }
+      return msg;
+    });
+
+    return updatedMessages;
+  }
+
+  async createChatCompletionStreamWithMemories(
+    request: ChatCompletionRequest,
+    memories: Memory[],
+  ): Promise<{
+    stream: Stream<ChatCompletionChunk>;
+    requestStartTime: number;
+  }> {
+    const messagesWithMemories = this.injectMemoriesIntoMessages(
+      request.messages,
+      memories,
+    );
+
+    return this.createChatCompletionStream({
+      ...request,
+      messages: messagesWithMemories,
+    });
   }
 }
