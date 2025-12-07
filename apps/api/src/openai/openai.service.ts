@@ -116,6 +116,7 @@ export class OpenAIService implements OnModuleInit {
 
   async extractMemories(
     conversationMessages: ConversationMessage[],
+    existingMemories: string[] = [],
   ): Promise<Memory[]> {
     if (!this.client) {
       return [];
@@ -125,25 +126,49 @@ export class OpenAIService implements OnModuleInit {
       .map((m) => `${m.role}: ${m.content}`)
       .join('\n');
 
-    const systemPrompt = `You are a memory extraction assistant. Analyze the conversation and extract important facts, preferences, tasks, or reminders about the user.
+    const existingMemoriesText =
+      existingMemories.length > 0
+        ? `\n\nALREADY KNOWN (do not extract these again):\n${existingMemories.map((m) => `- ${m}`).join('\n')}`
+        : '';
 
-Return a JSON array of memories. Each memory should have:
-- content: The fact or preference (string)
-- category: One of "preference", "fact", "task", "reminder", "relationship", "other"
-- importance: A score from 0.0 to 1.0 indicating how important this is to remember
+    const systemPrompt = `You are a personal memory assistant. Extract NEW and IMPORTANT information about the person from their conversation.
 
-Only extract genuinely important information. Be concise.
+RULES:
+1. Write memories in first person from the user's perspective or as direct facts
+2. Be specific and personal - include names, details, context
+3. Only extract genuinely useful information that would help in future conversations
+4. DO NOT extract:
+   - Generic greetings or small talk
+   - Information that was just asked but not confirmed
+   - Anything already in the "ALREADY KNOWN" list
+   - Obvious facts (e.g., "has a phone", "can speak")
+5. Merge related info into single memories when possible
 
-Example output:
-[
-  {"content": "User prefers morning calls", "category": "preference", "importance": 0.8},
-  {"content": "User's mother's name is Sarah", "category": "relationship", "importance": 0.7}
-]
+Return JSON: {"memories": [...]}
 
-If no important memories are found, return an empty array: []`;
+Each memory object:
+- content: The personal fact (string, specific and natural)
+- category: "preference" | "fact" | "task" | "reminder" | "relationship" | "other"
+- importance: 0.0-1.0 (how useful for future conversations)
+
+GOOD examples:
+- "Prefers to be called Og instead of Ogtay"
+- "Works as a software engineer at Google"
+- "Mom's name is Sarah, lives in Boston"
+- "Allergic to peanuts"
+- "Wants to learn Spanish this year"
+
+BAD examples (don't extract these):
+- "User's name is Ogtay" (too generic)
+- "User said hello" (irrelevant)
+- "User is a person" (obvious)
+
+If nothing important, return: {"memories": []}`;
 
     try {
-      this.logger.log(`Extracting memories from conversation (${conversationMessages.length} messages)`);
+      this.logger.log(
+        `Extracting memories from conversation (${conversationMessages.length} messages)`,
+      );
 
       const response = await this.client.chat.completions.create({
         model: this.model,
@@ -151,11 +176,11 @@ If no important memories are found, return an empty array: []`;
           { role: 'system', content: systemPrompt },
           {
             role: 'user',
-            content: `Extract memories from this conversation:\n\n${conversationText}`,
+            content: `Extract new memories from this conversation:${existingMemoriesText}\n\nCONVERSATION:\n${conversationText}`,
           },
         ],
         max_tokens: 1000,
-        temperature: 0.3,
+        temperature: 0.2,
         response_format: { type: 'json_object' },
       });
 

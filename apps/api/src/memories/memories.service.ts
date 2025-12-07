@@ -182,15 +182,22 @@ export class MemoriesService {
       return [];
     }
 
-    // Use OpenAI to extract memories from conversation
+    // Fetch existing memories to avoid duplicates
+    const existingMemoriesResult = await this.getMemoriesByUserId(userId, { limit: 100 });
+    const existingMemoryContents = existingMemoriesResult.memories.map(m => m.content);
+
+    this.logger.log(`Found ${existingMemoryContents.length} existing memories to check against`);
+
+    // Use OpenAI to extract memories from conversation, passing existing ones
     const extractedMemories = await this.openaiService.extractMemories(
       messages.map((m) => ({
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
       })),
+      existingMemoryContents,
     );
 
-    this.logger.log(`OpenAI returned ${extractedMemories.length} memories`);
+    this.logger.log(`OpenAI returned ${extractedMemories.length} new memories`);
 
     const savedMemories: Memory[] = [];
 
