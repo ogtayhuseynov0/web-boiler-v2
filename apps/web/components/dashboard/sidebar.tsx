@@ -11,7 +11,6 @@ import {
   X,
   Phone,
   Brain,
-  Calendar,
   CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,6 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Calls", href: "/calls", icon: Phone },
   { name: "Memories", href: "/memories", icon: Brain },
-  { name: "Schedule", href: "/schedule", icon: Calendar },
 ];
 
 const settingsNavigation = [

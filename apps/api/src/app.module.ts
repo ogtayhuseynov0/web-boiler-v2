@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import * as path from 'path';
 
@@ -34,7 +33,6 @@ import { GroqLlmModule } from './groq-llm/groq-llm.module';
         path.resolve(__dirname, '..', '..', '.env.local'),
       ],
     }),
-    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         name: 'short',

@@ -48,17 +48,6 @@ export interface Memory {
   created_at: string;
 }
 
-export interface ScheduledCall {
-  id: string;
-  user_id: string;
-  phone_number: string;
-  scheduled_at: string;
-  purpose: string | null;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'canceled';
-  call_id: string | null;
-  created_at: string;
-}
-
 export interface UserBalance {
   balance_cents: number;
   total_spent_cents: number;
