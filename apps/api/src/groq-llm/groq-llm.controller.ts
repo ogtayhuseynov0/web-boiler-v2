@@ -27,8 +27,9 @@ export class GroqLlmController {
     @Body() request: ChatCompletionRequest,
     @Res() res: Response,
   ) {
+    const requestReceivedAt = performance.now();
     this.logger.log(
-      `Received chat completion request, stream: ${request.stream}`,
+      `[PERF] Request received | stream: ${request.stream} | messages: ${request.messages?.length || 0}`,
     );
 
     if (!this.groqLlmService.isConfigured()) {
@@ -46,24 +47,51 @@ export class GroqLlmController {
         res.setHeader('Connection', 'keep-alive');
         res.setHeader('X-Accel-Buffering', 'no');
 
-        const stream =
+        const { stream, requestStartTime } =
           await this.groqLlmService.createChatCompletionStream(request);
 
+        let firstChunkReceived = false;
+        let chunkCount = 0;
+
         for await (const chunk of stream) {
+          if (!firstChunkReceived) {
+            const ttfb = performance.now() - requestStartTime;
+            this.logger.log(
+              `[PERF] Time to first byte (TTFB): ${ttfb.toFixed(2)}ms`,
+            );
+            firstChunkReceived = true;
+          }
+
+          chunkCount++;
           const data = JSON.stringify(chunk);
           res.write(`data: ${data}\n\n`);
         }
 
         res.write('data: [DONE]\n\n');
         res.end();
+
+        const totalDuration = performance.now() - requestReceivedAt;
+        this.logger.log(
+          `[PERF] Stream complete | chunks: ${chunkCount} | total: ${totalDuration.toFixed(2)}ms`,
+        );
       } else {
         // Handle non-streaming response
         const completion =
           await this.groqLlmService.createChatCompletion(request);
+
+        const totalDuration = performance.now() - requestReceivedAt;
+        this.logger.log(
+          `[PERF] Non-stream complete | total: ${totalDuration.toFixed(2)}ms`,
+        );
+
         res.json(completion);
       }
     } catch (error) {
-      this.logger.error(`Chat completion error: ${error.message}`, error.stack);
+      const errorDuration = performance.now() - requestReceivedAt;
+      this.logger.error(
+        `[PERF] Error after ${errorDuration.toFixed(2)}ms: ${error.message}`,
+        error.stack,
+      );
 
       // If headers already sent (streaming started), we can't change status
       if (res.headersSent) {

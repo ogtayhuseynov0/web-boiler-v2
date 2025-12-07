@@ -149,9 +149,18 @@ export class CallsService {
     callId: string,
     role: 'user' | 'assistant' | 'system',
     content: string,
-    audioUrl?: string,
+    options?: {
+      audioUrl?: string;
+      timestampMs?: number;
+      sequenceIndex?: number;
+    },
   ): Promise<ConversationMessage | null> {
     const supabase = this.supabaseService.getClient();
+
+    // Use provided timestamp, or generate one with sequence offset to ensure ordering
+    const baseTimestamp = options?.timestampMs ?? Date.now();
+    const sequenceOffset = options?.sequenceIndex ?? 0;
+    const timestamp = baseTimestamp + sequenceOffset;
 
     const { data: message, error } = await supabase
       .from('conversation_messages')
@@ -159,8 +168,8 @@ export class CallsService {
         call_id: callId,
         role,
         content,
-        audio_url: audioUrl || null,
-        timestamp_ms: Date.now(),
+        audio_url: options?.audioUrl || null,
+        timestamp_ms: timestamp,
       })
       .select()
       .single();

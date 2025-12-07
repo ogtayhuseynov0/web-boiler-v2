@@ -16,6 +16,13 @@ import { CallsService } from '../calls/calls.service';
 import { QueueService } from '../queue/queue.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
+interface TranscriptEntry {
+  role: 'user' | 'agent';
+  message: string;
+  timestamp?: number;
+  time_in_call_secs?: number;
+}
+
 interface ElevenLabsWebhookPayload {
   type: string;
   event_id?: string;
@@ -26,19 +33,11 @@ interface ElevenLabsWebhookPayload {
     agent_id?: string;
     status?: string;
     duration_seconds?: number;
-    transcript?: Array<{
-      role: 'user' | 'agent';
-      message: string;
-      timestamp?: number;
-    }>;
+    transcript?: TranscriptEntry[];
     metadata?: Record<string, string>;
   };
   // post_call_transcription fields
-  transcript?: Array<{
-    role: 'user' | 'agent';
-    message: string;
-    time_in_call_secs?: number;
-  }>;
+  transcript?: TranscriptEntry[];
   metadata?: Record<string, string>;
   call_duration_secs?: number;
 }
@@ -210,12 +209,23 @@ export class ElevenLabsWebhookController {
 
     // Store transcript if provided
     if (transcript && transcript.length > 0) {
-      for (const entry of transcript) {
-        await this.callsService.addMessage(
-          callId,
-          entry.role === 'agent' ? 'assistant' : 'user',
-          entry.message,
-        );
+      for (let i = 0; i < transcript.length; i++) {
+        const entry = transcript[i];
+        if (entry.message && entry.message.trim()) {
+          const timestampMs = entry.time_in_call_secs
+            ? Math.round(entry.time_in_call_secs * 1000)
+            : undefined;
+
+          await this.callsService.addMessage(
+            callId,
+            entry.role === 'agent' ? 'assistant' : 'user',
+            entry.message,
+            {
+              timestampMs,
+              sequenceIndex: timestampMs ? 0 : i,
+            },
+          );
+        }
       }
     }
 
@@ -295,13 +305,24 @@ export class ElevenLabsWebhookController {
     }
 
     // Store transcript entries (skip entries with empty content)
+    // Use time_in_call_secs for proper ordering
     let storedCount = 0;
-    for (const entry of transcript) {
+    for (let i = 0; i < transcript.length; i++) {
+      const entry = transcript[i];
       if (entry.message && entry.message.trim()) {
+        // Convert time_in_call_secs to ms, or use sequence index as fallback
+        const timestampMs = entry.time_in_call_secs
+          ? Math.round(entry.time_in_call_secs * 1000)
+          : undefined;
+
         await this.callsService.addMessage(
           callId,
           entry.role === 'agent' ? 'assistant' : 'user',
           entry.message,
+          {
+            timestampMs,
+            sequenceIndex: timestampMs ? 0 : i, // Use index only if no timestamp
+          },
         );
         storedCount++;
       }

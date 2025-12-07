@@ -32,7 +32,7 @@ export class GroqLlmService implements OnModuleInit {
     const apiKey = this.configService.get<string>('GROQ_API_KEY');
     this.defaultModel =
       this.configService.get<string>('GROQ_MODEL') || 'llama-3.3-70b-versatile';
-
+    console.log(this.defaultModel);
     if (!apiKey) {
       this.logger.warn(
         'GROQ_API_KEY not configured. Custom LLM endpoint will not work.',
@@ -54,9 +54,10 @@ export class GroqLlmService implements OnModuleInit {
     return !!this.client;
   }
 
-  async createChatCompletionStream(
-    request: ChatCompletionRequest,
-  ): Promise<Stream<ChatCompletionChunk>> {
+  async createChatCompletionStream(request: ChatCompletionRequest): Promise<{
+    stream: Stream<ChatCompletionChunk>;
+    requestStartTime: number;
+  }> {
     if (!this.client) {
       throw new Error('Groq client not configured');
     }
@@ -74,9 +75,18 @@ export class GroqLlmService implements OnModuleInit {
     // Use default model if not specified
     const model = openaiRequest.model || this.defaultModel;
 
+    const messagePreview =
+      request.messages.length > 0
+        ? request.messages[request.messages.length - 1].content
+            ?.toString()
+            .substring(0, 50)
+        : '';
+
     this.logger.log(
-      `Creating chat completion with model: ${model}, messages: ${request.messages.length}`,
+      `[PERF] Starting stream request | model: ${model} | messages: ${request.messages.length} | last: "${messagePreview}..."`,
     );
+
+    const requestStartTime = performance.now();
 
     const response = await this.client.chat.completions.create({
       ...openaiRequest,
@@ -85,7 +95,12 @@ export class GroqLlmService implements OnModuleInit {
       user: user_id,
     });
 
-    return response;
+    const apiCallDuration = performance.now() - requestStartTime;
+    this.logger.log(
+      `[PERF] Groq API call returned stream in ${apiCallDuration.toFixed(2)}ms`,
+    );
+
+    return { stream: response, requestStartTime };
   }
 
   async createChatCompletion(
@@ -99,9 +114,9 @@ export class GroqLlmService implements OnModuleInit {
       request;
     const model = openaiRequest.model || this.defaultModel;
 
-    this.logger.log(
-      `Creating non-streaming chat completion with model: ${model}`,
-    );
+    this.logger.log(`[PERF] Starting non-streaming request | model: ${model}`);
+
+    const startTime = performance.now();
 
     const completion = await this.client.chat.completions.create({
       ...openaiRequest,
@@ -109,6 +124,11 @@ export class GroqLlmService implements OnModuleInit {
       stream: false,
       user: user_id,
     });
+
+    const duration = performance.now() - startTime;
+    this.logger.log(
+      `[PERF] Non-streaming completion in ${duration.toFixed(2)}ms | tokens: ${completion.usage?.total_tokens || 'N/A'}`,
+    );
 
     return completion;
   }
