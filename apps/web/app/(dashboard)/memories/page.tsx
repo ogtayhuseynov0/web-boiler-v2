@@ -46,40 +46,13 @@ const categories = [
   { value: "relationship", label: "Relationships", icon: Users },
 ];
 
-const categoryConfig: Record<
-  string,
-  { color: string; bgColor: string; icon: typeof Brain }
-> = {
-  preference: {
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10 border-blue-500/20",
-    icon: Heart,
-  },
-  fact: {
-    color: "text-emerald-500",
-    bgColor: "bg-emerald-500/10 border-emerald-500/20",
-    icon: Lightbulb,
-  },
-  task: {
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10 border-orange-500/20",
-    icon: CheckSquare,
-  },
-  reminder: {
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10 border-purple-500/20",
-    icon: Bell,
-  },
-  relationship: {
-    color: "text-pink-500",
-    bgColor: "bg-pink-500/10 border-pink-500/20",
-    icon: Users,
-  },
-  other: {
-    color: "text-gray-500",
-    bgColor: "bg-gray-500/10 border-gray-500/20",
-    icon: Brain,
-  },
+const categoryConfig: Record<string, { icon: typeof Brain; color: string }> = {
+  preference: { icon: Heart, color: "text-blue-500" },
+  fact: { icon: Lightbulb, color: "text-emerald-500" },
+  task: { icon: CheckSquare, color: "text-orange-500" },
+  reminder: { icon: Bell, color: "text-purple-500" },
+  relationship: { icon: Users, color: "text-pink-500" },
+  other: { icon: Brain, color: "text-gray-500" },
 };
 
 function formatRelativeDate(dateString: string): string {
@@ -261,35 +234,26 @@ export default function MemoriesPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3 h-full overflow-y-auto overflow-x-hidden pr-1">
+            <div className="space-y-2 h-full overflow-y-auto overflow-x-hidden pr-1">
               {filteredMemories.map((memory) => {
-                const config =
-                  categoryConfig[memory.category] || categoryConfig.other;
+                const config = categoryConfig[memory.category] || categoryConfig.other;
                 const Icon = config.icon;
 
                 return (
                   <div
                     key={memory.id}
-                    className={`group flex items-start gap-3 rounded-xl border p-4 transition-colors hover:bg-muted/50 ${config.bgColor}`}
+                    className="group flex items-start gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/50"
                   >
-                    <div
-                      className={`flex-shrink-0 rounded-lg p-2 ${config.color} bg-background`}
-                    >
-                      <Icon className="h-4 w-4" />
+                    <div className="flex-shrink-0 rounded-md bg-muted p-2">
+                      <Icon className={`h-4 w-4 ${config.color}`} />
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm leading-relaxed">{memory.content}</p>
-                      <div className="mt-2 flex items-center gap-3">
-                        <Badge
-                          variant="secondary"
-                          className={`text-xs font-normal ${config.color} bg-transparent px-0`}
-                        >
-                          {memory.category}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {formatRelativeDate(memory.created_at)}
-                        </span>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="capitalize">{memory.category}</span>
+                        <span>·</span>
+                        <span>{formatRelativeDate(memory.created_at)}</span>
                       </div>
                     </div>
 
