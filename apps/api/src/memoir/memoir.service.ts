@@ -13,33 +13,40 @@ export interface MemoirChapter {
   time_period_start: string | null;
   time_period_end: string | null;
   is_default: boolean;
-  memory_count: number;
+  story_count: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface ChapterContent {
+export interface ChapterStory {
   id: string;
   chapter_id: string;
+  user_id: string;
+  title: string | null;
   content: string;
-  version: number;
-  word_count: number;
-  memory_ids: string[];
-  is_current: boolean;
-  generated_at: string;
-}
-
-export interface ChapterWithContent extends MemoirChapter {
-  current_content?: ChapterContent | null;
-}
-
-interface MemoryForChapter {
-  id: string;
-  content: string;
-  category: string;
+  summary: string | null;
   time_period: string | null;
-  time_context: string | null;
+  source_type: 'chat' | 'call' | 'manual';
+  source_id: string | null;
+  display_order: number;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+export interface ChapterWithStories extends MemoirChapter {
+  stories: ChapterStory[];
+}
+
+export interface CreateStoryDto {
+  userId: string;
+  chapterId?: string;
+  title?: string;
+  content: string;
+  summary?: string;
+  timePeriod?: string;
+  sourceType?: 'chat' | 'call' | 'manual';
+  sourceId?: string;
 }
 
 @Injectable()
@@ -52,25 +59,22 @@ export class MemoirService {
     private queueService: QueueService,
   ) {}
 
-  /**
-   * Get or create default chapters for a user
-   */
+  // ==================== CHAPTERS ====================
+
   async getOrCreateChapters(userId: string): Promise<MemoirChapter[]> {
     const supabase = this.supabaseService.getClient();
 
     this.logger.log(`Getting or creating chapters for user ${userId}`);
 
-    // Use the database function to get or create default chapters
-    const { data, error } = await supabase.rpc('get_or_create_default_chapters', {
+    const { error } = await supabase.rpc('get_or_create_default_chapters', {
       p_user_id: userId,
     });
 
     if (error) {
-      this.logger.error('Failed to get/create chapters via RPC:', error.message, error.details, error.hint);
+      this.logger.error('Failed to get/create chapters via RPC:', error.message);
       throw new Error(`Failed to get/create chapters: ${error.message}`);
     }
 
-    // Fetch full chapter data
     const { data: chapters, error: fetchError } = await supabase
       .from('memoir_chapters')
       .select('*')
@@ -85,148 +89,38 @@ export class MemoirService {
     return chapters || [];
   }
 
-  /**
-   * Get all chapters with their current content
-   */
-  async getChaptersWithContent(userId: string): Promise<ChapterWithContent[]> {
+  async getChaptersWithStories(userId: string): Promise<ChapterWithStories[]> {
     const chapters = await this.getOrCreateChapters(userId);
     const supabase = this.supabaseService.getClient();
 
-    // Fetch current content for all chapters
-    const { data: contents, error } = await supabase
-      .from('chapter_content')
+    const { data: stories, error } = await supabase
+      .from('chapter_stories')
       .select('*')
-      .in(
-        'chapter_id',
-        chapters.map((c) => c.id),
-      )
-      .eq('is_current', true);
+      .in('chapter_id', chapters.map((c) => c.id))
+      .eq('is_active', true)
+      .order('display_order')
+      .order('created_at');
 
     if (error) {
-      this.logger.error('Failed to fetch chapter contents:', error);
+      this.logger.error('Failed to fetch stories:', error);
     }
 
-    // Map content to chapters
-    const contentMap = new Map<string, ChapterContent>();
-    (contents || []).forEach((c) => {
-      contentMap.set(c.chapter_id, c);
+    const storiesMap = new Map<string, ChapterStory[]>();
+    (stories || []).forEach((s) => {
+      const existing = storiesMap.get(s.chapter_id) || [];
+      existing.push(s);
+      storiesMap.set(s.chapter_id, existing);
     });
 
     return chapters.map((chapter) => ({
       ...chapter,
-      current_content: contentMap.get(chapter.id) || null,
+      stories: storiesMap.get(chapter.id) || [],
     }));
   }
 
-  /**
-   * Determine which chapter a memory belongs to based on its content
-   */
-  async assignChapter(
-    userId: string,
-    memoryContent: string,
-    timePeriod?: string | null,
-  ): Promise<{ chapterId: string; timePeriod: string | null }> {
-    const chapters = await this.getOrCreateChapters(userId);
-
-    if (!this.openaiService.isConfigured()) {
-      // Default to first chapter if AI not available
-      return {
-        chapterId: chapters[0]?.id,
-        timePeriod: timePeriod || null,
-      };
-    }
-
-    const chapterList = chapters
-      .map((c) => `- "${c.title}" (${c.slug}): ${c.description || 'General stories'}`)
-      .join('\n');
-
-    const prompt = `Given this memory/story from someone's life, determine which chapter it belongs to and extract any time period references.
-
-MEMORY: "${memoryContent}"
-
-AVAILABLE CHAPTERS:
-${chapterList}
-
-Analyze the memory and return JSON:
-{
-  "chapter_slug": "the-slug-of-best-matching-chapter",
-  "time_period": "extracted time reference or null (e.g., '1960s', 'childhood', 'college years', '2010')",
-  "reasoning": "brief explanation"
-}
-
-Rules:
-- Match based on content themes, not just explicit time references
-- Family/relationship stories go to "family" chapter
-- Life lessons/wisdom go to "reflections" chapter
-- If unclear, choose based on the life stage mentioned
-- Extract any time references from the memory text`;
-
-    try {
-      const response = await this.openaiService.chat(
-        [{ role: 'user', content: prompt }],
-        { maxTokens: 200, temperature: 0.3 },
-      );
-
-      if (response) {
-        const parsed = JSON.parse(response);
-        const matchedChapter = chapters.find((c) => c.slug === parsed.chapter_slug);
-
-        return {
-          chapterId: matchedChapter?.id || chapters[0]?.id,
-          timePeriod: parsed.time_period || timePeriod || null,
-        };
-      }
-    } catch (error) {
-      this.logger.error('Failed to assign chapter via AI:', error);
-    }
-
-    // Fallback: use keyword matching
-    return this.assignChapterByKeywords(chapters, memoryContent, timePeriod);
-  }
-
-  /**
-   * Fallback chapter assignment using keywords
-   */
-  private assignChapterByKeywords(
-    chapters: MemoirChapter[],
-    content: string,
-    timePeriod?: string | null,
-  ): { chapterId: string; timePeriod: string | null } {
-    const lowerContent = content.toLowerCase();
-
-    // Keyword patterns for each chapter type
-    const patterns: Record<string, string[]> = {
-      'early-years': ['born', 'childhood', 'baby', 'toddler', 'kindergarten', 'young child'],
-      'growing-up': ['school', 'high school', 'teenager', 'teen', 'adolescent', 'graduation'],
-      'young-adult': ['college', 'university', 'first job', 'moved out', '20s', 'twenties'],
-      'building-a-life': ['married', 'career', 'house', 'promoted', 'business'],
-      family: ['mother', 'father', 'mom', 'dad', 'brother', 'sister', 'grandpa', 'grandma', 'family', 'children', 'kids', 'spouse', 'wife', 'husband'],
-      reflections: ['learned', 'realized', 'wisdom', 'advice', 'regret', 'proud', 'grateful', 'lesson'],
-    };
-
-    for (const [slug, keywords] of Object.entries(patterns)) {
-      if (keywords.some((kw) => lowerContent.includes(kw))) {
-        const chapter = chapters.find((c) => c.slug === slug);
-        if (chapter) {
-          return { chapterId: chapter.id, timePeriod: timePeriod || null };
-        }
-      }
-    }
-
-    // Default to first chapter
-    return { chapterId: chapters[0]?.id, timePeriod: timePeriod || null };
-  }
-
-  /**
-   * Generate narrative prose for a chapter from its memories
-   */
-  async generateChapterNarrative(
-    userId: string,
-    chapterId: string,
-  ): Promise<ChapterContent | null> {
+  async getChapterById(userId: string, chapterId: string): Promise<ChapterWithStories | null> {
     const supabase = this.supabaseService.getClient();
 
-    // Get chapter info
     const { data: chapter, error: chapterError } = await supabase
       .from('memoir_chapters')
       .select('*')
@@ -235,168 +129,23 @@ Rules:
       .single();
 
     if (chapterError || !chapter) {
-      this.logger.error('Chapter not found:', chapterError);
       return null;
     }
 
-    // Get all memories for this chapter
-    const { data: memories, error: memoriesError } = await supabase
-      .from('user_memories')
-      .select('id, content, category, time_period, time_context, created_at')
+    const { data: stories } = await supabase
+      .from('chapter_stories')
+      .select('*')
       .eq('chapter_id', chapterId)
       .eq('is_active', true)
+      .order('display_order')
       .order('created_at');
 
-    if (memoriesError) {
-      this.logger.error('Failed to fetch memories:', memoriesError);
-      return null;
-    }
-
-    if (!memories || memories.length === 0) {
-      this.logger.log(`No memories for chapter ${chapter.title}`);
-      return null;
-    }
-
-    // Get user name for personalization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('preferred_name, full_name')
-      .eq('id', userId)
-      .single();
-
-    const userName = profile?.preferred_name || profile?.full_name || 'the storyteller';
-
-    // Generate narrative
-    const narrative = await this.generateNarrativeFromMemories(
-      chapter,
-      memories as MemoryForChapter[],
-      userName,
-    );
-
-    if (!narrative) {
-      return null;
-    }
-
-    // Get current version number
-    const { data: currentContent } = await supabase
-      .from('chapter_content')
-      .select('version')
-      .eq('chapter_id', chapterId)
-      .order('version', { ascending: false })
-      .limit(1)
-      .single();
-
-    const nextVersion = (currentContent?.version || 0) + 1;
-
-    // Save new content
-    const { data: newContent, error: insertError } = await supabase
-      .from('chapter_content')
-      .insert({
-        chapter_id: chapterId,
-        content: narrative,
-        version: nextVersion,
-        word_count: narrative.split(/\s+/).length,
-        memory_ids: memories.map((m) => m.id),
-        is_current: true,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      this.logger.error('Failed to save chapter content:', insertError);
-      return null;
-    }
-
-    this.logger.log(`Generated narrative for chapter "${chapter.title}" (v${nextVersion})`);
-    return newContent;
+    return {
+      ...chapter,
+      stories: stories || [],
+    };
   }
 
-  /**
-   * Use AI to generate narrative prose from memories
-   */
-  private async generateNarrativeFromMemories(
-    chapter: MemoirChapter,
-    memories: MemoryForChapter[],
-    userName: string,
-  ): Promise<string | null> {
-    if (!this.openaiService.isConfigured()) {
-      // Fallback: just concatenate memories
-      return memories.map((m) => m.content).join('\n\n');
-    }
-
-    const memoriesText = memories
-      .map((m, i) => `${i + 1}. ${m.content}${m.time_period ? ` (${m.time_period})` : ''}`)
-      .join('\n');
-
-    const prompt = `You are a skilled memoir writer helping ${userName} create a beautiful, personal narrative for their life story.
-
-CHAPTER: "${chapter.title}"
-${chapter.description ? `THEME: ${chapter.description}` : ''}
-
-COLLECTED MEMORIES & STORIES:
-${memoriesText}
-
-Write a flowing, personal narrative that weaves these memories together into a cohesive chapter.
-
-GUIDELINES:
-- Write in first person as if ${userName} is telling their own story
-- Create smooth transitions between different memories
-- Add emotional depth while staying true to the facts shared
-- Group related memories thematically when it flows naturally
-- Use vivid, evocative language that brings memories to life
-- Keep the authentic voice - this is their personal memoir
-- If time periods are mentioned, use them to create chronological flow
-- Don't add fictional events, only expand on what was shared
-- Aim for 2-4 paragraphs depending on the amount of content
-- Each paragraph should feel like a natural part of the life story
-
-Write the narrative now:`;
-
-    try {
-      const response = await this.openaiService.chat(
-        [{ role: 'user', content: prompt }],
-        { maxTokens: 1500, temperature: 0.7 },
-      );
-
-      return response;
-    } catch (error) {
-      this.logger.error('Failed to generate narrative:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Queue chapter regeneration (called after new memories are added)
-   */
-  async queueChapterRegeneration(userId: string, chapterId: string): Promise<void> {
-    this.logger.log(`Queueing regeneration for chapter ${chapterId}`);
-
-    try {
-      // Add to queue with short delay - use unique jobId to allow multiple regenerations
-      await this.queueService.addJob('regenerate-chapter', {
-        userId,
-        chapterId,
-        timestamp: Date.now(),
-      }, {
-        delay: 3000, // 3 second delay
-      });
-      this.logger.log(`Successfully queued regeneration for chapter ${chapterId}`);
-    } catch (error) {
-      this.logger.error(`Failed to queue regeneration for chapter ${chapterId}:`, error);
-    }
-  }
-
-  /**
-   * Process chapter regeneration job
-   */
-  async processChapterRegeneration(userId: string, chapterId: string): Promise<void> {
-    this.logger.log(`Processing chapter regeneration for ${chapterId}`);
-    await this.generateChapterNarrative(userId, chapterId);
-  }
-
-  /**
-   * Create a custom chapter
-   */
   async createChapter(
     userId: string,
     data: {
@@ -408,13 +157,11 @@ Write the narrative now:`;
   ): Promise<MemoirChapter | null> {
     const supabase = this.supabaseService.getClient();
 
-    // Generate slug
     const slug = data.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
-    // Get next display order
     const { data: lastChapter } = await supabase
       .from('memoir_chapters')
       .select('display_order')
@@ -448,34 +195,43 @@ Write the narrative now:`;
     return chapter;
   }
 
-  /**
-   * Update chapter order
-   */
-  async reorderChapters(
+  async updateChapter(
     userId: string,
-    chapterOrders: Array<{ id: string; order: number }>,
-  ): Promise<boolean> {
+    chapterId: string,
+    data: {
+      title?: string;
+      description?: string;
+      timePeriodStart?: string;
+      timePeriodEnd?: string;
+    },
+  ): Promise<MemoirChapter | null> {
     const supabase = this.supabaseService.getClient();
 
-    for (const { id, order } of chapterOrders) {
-      const { error } = await supabase
-        .from('memoir_chapters')
-        .update({ display_order: order })
-        .eq('id', id)
-        .eq('user_id', userId);
+    const updateData: Record<string, unknown> = {};
+    if (data.title) {
+      updateData.title = data.title;
+      updateData.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.timePeriodStart !== undefined) updateData.time_period_start = data.timePeriodStart;
+    if (data.timePeriodEnd !== undefined) updateData.time_period_end = data.timePeriodEnd;
 
-      if (error) {
-        this.logger.error('Failed to reorder chapter:', error);
-        return false;
-      }
+    const { data: chapter, error } = await supabase
+      .from('memoir_chapters')
+      .update(updateData)
+      .eq('id', chapterId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      this.logger.error('Failed to update chapter:', error);
+      return null;
     }
 
-    return true;
+    return chapter;
   }
 
-  /**
-   * Delete a chapter
-   */
   async deleteChapter(userId: string, chapterId: string): Promise<boolean> {
     const supabase = this.supabaseService.getClient();
 
@@ -484,7 +240,7 @@ Write the narrative now:`;
       .delete()
       .eq('id', chapterId)
       .eq('user_id', userId)
-      .eq('is_default', false); // Can't delete default chapters
+      .eq('is_default', false);
 
     if (error) {
       this.logger.error('Failed to delete chapter:', error);
@@ -492,5 +248,295 @@ Write the narrative now:`;
     }
 
     return true;
+  }
+
+  // ==================== STORIES ====================
+
+  async createStory(data: CreateStoryDto): Promise<ChapterStory | null> {
+    const supabase = this.supabaseService.getClient();
+
+    let chapterId = data.chapterId;
+
+    // Auto-assign chapter if not provided
+    if (!chapterId) {
+      const assignment = await this.assignChapter(data.userId, data.content, data.timePeriod);
+      chapterId = assignment.chapterId;
+    }
+
+    const { data: story, error } = await supabase
+      .from('chapter_stories')
+      .insert({
+        chapter_id: chapterId,
+        user_id: data.userId,
+        title: data.title || null,
+        content: data.content,
+        summary: data.summary || null,
+        time_period: data.timePeriod || null,
+        source_type: data.sourceType || 'manual',
+        source_id: data.sourceId || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      this.logger.error('Failed to create story:', error);
+      return null;
+    }
+
+    this.logger.log(`Story created: ${story.id} in chapter ${chapterId}`);
+    return story;
+  }
+
+  async getStoryById(userId: string, storyId: string): Promise<ChapterStory | null> {
+    const supabase = this.supabaseService.getClient();
+
+    const { data: story, error } = await supabase
+      .from('chapter_stories')
+      .select('*')
+      .eq('id', storyId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      return null;
+    }
+
+    return story;
+  }
+
+  async updateStory(
+    userId: string,
+    storyId: string,
+    data: {
+      title?: string;
+      content?: string;
+      summary?: string;
+      timePeriod?: string;
+      chapterId?: string;
+    },
+  ): Promise<ChapterStory | null> {
+    const supabase = this.supabaseService.getClient();
+
+    const updateData: Record<string, unknown> = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.content !== undefined) updateData.content = data.content;
+    if (data.summary !== undefined) updateData.summary = data.summary;
+    if (data.timePeriod !== undefined) updateData.time_period = data.timePeriod;
+    if (data.chapterId !== undefined) updateData.chapter_id = data.chapterId;
+
+    const { data: story, error } = await supabase
+      .from('chapter_stories')
+      .update(updateData)
+      .eq('id', storyId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      this.logger.error('Failed to update story:', error);
+      return null;
+    }
+
+    return story;
+  }
+
+  async deleteStory(userId: string, storyId: string): Promise<boolean> {
+    const supabase = this.supabaseService.getClient();
+
+    const { error } = await supabase
+      .from('chapter_stories')
+      .update({ is_active: false })
+      .eq('id', storyId)
+      .eq('user_id', userId);
+
+    if (error) {
+      this.logger.error('Failed to delete story:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  // ==================== STORY EXTRACTION ====================
+
+  async extractStoriesFromConversation(
+    userId: string,
+    messages: Array<{ role: string; content: string }>,
+    sourceType: 'chat' | 'call' = 'chat',
+    sourceId?: string,
+  ): Promise<ChapterStory[]> {
+    this.logger.log(`Extracting stories from ${messages.length} messages`);
+
+    if (!this.openaiService.isConfigured()) {
+      this.logger.warn('OpenAI not configured, skipping story extraction');
+      return [];
+    }
+
+    const conversationText = messages
+      .filter((m) => m.role === 'user')
+      .map((m) => m.content)
+      .join('\n\n');
+
+    if (conversationText.length < 50) {
+      this.logger.log('Conversation too short for story extraction');
+      return [];
+    }
+
+    const chapters = await this.getOrCreateChapters(userId);
+    const chapterList = chapters
+      .map((c) => `- "${c.title}" (${c.slug}): ${c.description || 'General stories'}`)
+      .join('\n');
+
+    const prompt = `You are analyzing a conversation to extract personal life stories for a memoir.
+
+CONVERSATION:
+${conversationText}
+
+AVAILABLE CHAPTERS:
+${chapterList}
+
+Extract any personal stories, memories, or significant life events shared. For each story found, return JSON:
+
+{
+  "stories": [
+    {
+      "title": "Brief title for the story (5-8 words)",
+      "content": "The full story written as a first-person narrative, expanding on what was shared while staying true to the facts. 2-4 paragraphs.",
+      "summary": "One sentence summary",
+      "time_period": "Time reference if mentioned (e.g., '1990s', 'childhood', 'college')",
+      "chapter_slug": "best-matching-chapter-slug"
+    }
+  ]
+}
+
+Rules:
+- Only extract actual stories/memories, not casual conversation
+- Write content as polished first-person narrative
+- Stay true to facts shared, don't invent details
+- Each story should be a complete, standalone narrative
+- Return empty stories array if no meaningful stories found
+- Match stories to the most appropriate chapter based on theme/time period`;
+
+    try {
+      const response = await this.openaiService.chat(
+        [{ role: 'user', content: prompt }],
+        { maxTokens: 2000, temperature: 0.7 },
+      );
+
+      if (!response) {
+        return [];
+      }
+
+      const parsed = JSON.parse(response);
+      const savedStories: ChapterStory[] = [];
+
+      for (const extracted of parsed.stories || []) {
+        const chapter = chapters.find((c) => c.slug === extracted.chapter_slug) || chapters[0];
+
+        const story = await this.createStory({
+          userId,
+          chapterId: chapter.id,
+          title: extracted.title,
+          content: extracted.content,
+          summary: extracted.summary,
+          timePeriod: extracted.time_period,
+          sourceType,
+          sourceId,
+        });
+
+        if (story) {
+          savedStories.push(story);
+        }
+      }
+
+      this.logger.log(`Extracted ${savedStories.length} stories from conversation`);
+      return savedStories;
+    } catch (error) {
+      this.logger.error('Failed to extract stories:', error);
+      return [];
+    }
+  }
+
+  // ==================== CHAPTER ASSIGNMENT ====================
+
+  async assignChapter(
+    userId: string,
+    storyContent: string,
+    timePeriod?: string | null,
+  ): Promise<{ chapterId: string; timePeriod: string | null }> {
+    const chapters = await this.getOrCreateChapters(userId);
+
+    if (!this.openaiService.isConfigured()) {
+      return {
+        chapterId: chapters[0]?.id,
+        timePeriod: timePeriod || null,
+      };
+    }
+
+    const chapterList = chapters
+      .map((c) => `- "${c.title}" (${c.slug}): ${c.description || 'General stories'}`)
+      .join('\n');
+
+    const prompt = `Given this story from someone's life, determine which chapter it belongs to.
+
+STORY: "${storyContent.substring(0, 500)}..."
+
+AVAILABLE CHAPTERS:
+${chapterList}
+
+Return JSON:
+{
+  "chapter_slug": "the-slug-of-best-matching-chapter",
+  "time_period": "extracted time reference or null"
+}`;
+
+    try {
+      const response = await this.openaiService.chat(
+        [{ role: 'user', content: prompt }],
+        { maxTokens: 100, temperature: 0.3 },
+      );
+
+      if (response) {
+        const parsed = JSON.parse(response);
+        const matchedChapter = chapters.find((c) => c.slug === parsed.chapter_slug);
+
+        return {
+          chapterId: matchedChapter?.id || chapters[0]?.id,
+          timePeriod: parsed.time_period || timePeriod || null,
+        };
+      }
+    } catch (error) {
+      this.logger.error('Failed to assign chapter via AI:', error);
+    }
+
+    return this.assignChapterByKeywords(chapters, storyContent, timePeriod);
+  }
+
+  private assignChapterByKeywords(
+    chapters: MemoirChapter[],
+    content: string,
+    timePeriod?: string | null,
+  ): { chapterId: string; timePeriod: string | null } {
+    const lowerContent = content.toLowerCase();
+
+    const patterns: Record<string, string[]> = {
+      'early-years': ['born', 'childhood', 'baby', 'toddler', 'kindergarten', 'young child'],
+      'growing-up': ['school', 'high school', 'teenager', 'teen', 'adolescent', 'graduation'],
+      'young-adult': ['college', 'university', 'first job', 'moved out', '20s', 'twenties'],
+      'building-a-life': ['married', 'career', 'house', 'promoted', 'business'],
+      family: ['mother', 'father', 'mom', 'dad', 'brother', 'sister', 'grandpa', 'grandma', 'family', 'children', 'kids', 'spouse', 'wife', 'husband'],
+      reflections: ['learned', 'realized', 'wisdom', 'advice', 'regret', 'proud', 'grateful', 'lesson'],
+    };
+
+    for (const [slug, keywords] of Object.entries(patterns)) {
+      if (keywords.some((kw) => lowerContent.includes(kw))) {
+        const chapter = chapters.find((c) => c.slug === slug);
+        if (chapter) {
+          return { chapterId: chapter.id, timePeriod: timePeriod || null };
+        }
+      }
+    }
+
+    return { chapterId: chapters[0]?.id, timePeriod: timePeriod || null };
   }
 }

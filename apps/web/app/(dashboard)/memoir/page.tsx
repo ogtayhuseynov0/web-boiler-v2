@@ -5,9 +5,9 @@ import HTMLFlipBook from "react-pageflip";
 import ReactMarkdown from "react-markdown";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronLeft, ChevronRight, BookOpen, RefreshCw } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, BookOpen, List } from "lucide-react";
 import { memoirApi, MemoirChapter, profileApi } from "@/lib/api-client";
-import { toast } from "sonner";
+import Link from "next/link";
 
 interface PageProps {
   children: React.ReactNode;
@@ -33,7 +33,6 @@ export default function MemoirPage() {
   const [chapters, setChapters] = useState<MemoirChapter[]>([]);
   const [userName, setUserName] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [regenerating, setRegenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [targetPage, setTargetPage] = useState(0);
   const [bookSize, setBookSize] = useState({ width: 550, height: 700 });
@@ -92,22 +91,6 @@ export default function MemoirPage() {
     fetchData();
   }, []);
 
-  const handleRegenerate = async () => {
-    setRegenerating(true);
-    const res = await memoirApi.regenerateAll();
-    if (res.data?.success) {
-      toast.success(`Regenerated ${res.data.regenerated} chapters`);
-      // Refresh chapters
-      const chaptersRes = await memoirApi.getChapters();
-      if (chaptersRes.data?.chapters) {
-        setChapters(chaptersRes.data.chapters);
-      }
-    } else {
-      toast.error("Failed to regenerate chapters");
-    }
-    setRegenerating(false);
-  };
-
   const handlePrevPage = () => {
     if (bookRef.current) {
       setTargetPage(prev => Math.max(0, prev - 1));
@@ -128,19 +111,30 @@ export default function MemoirPage() {
   };
 
   const onChangeState = (e: any) => {
-    // Detect flip start from user interaction (click/drag on pages)
-    if (e.data === 'flipping') {
+    if (e.data === 'read') {
       const pageFlip = bookRef.current?.pageFlip();
       if (pageFlip) {
-        const destination = pageFlip.getDestination?.() ?? currentPage;
-        setTargetPage(destination);
+        const actualPage = pageFlip.getCurrentPageIndex();
+        setTargetPage(prev => prev !== actualPage ? actualPage : prev);
       }
     }
   };
 
-  // Get chapters with content
-  const chaptersWithContent = chapters.filter(c => c.current_content?.content);
-  const totalMemories = chapters.reduce((sum, c) => sum + c.memory_count, 0);
+  const handleBookClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const midPoint = rect.width / 2;
+
+    if (clickX < midPoint && currentPage > 0) {
+      setTargetPage(currentPage - 1);
+    } else if (clickX >= midPoint) {
+      setTargetPage(currentPage + 1);
+    }
+  };
+
+  // Get chapters with stories
+  const chaptersWithStories = chapters.filter(c => c.stories && c.stories.length > 0);
+  const totalStories = chapters.reduce((sum, c) => sum + (c.stories?.length || 0), 0);
 
   if (loading) {
     return (
@@ -166,15 +160,14 @@ export default function MemoirPage() {
         </p>
         <div className="mt-8 w-24 h-0.5 bg-primary/30" />
         <p className="mt-4 text-sm text-muted-foreground">
-          {totalMemories} memories across {chapters.length} chapters
+          {totalStories} stories across {chaptersWithStories.length} chapters
         </p>
       </div>
     </Page>
   );
 
-  // Table of contents - only show chapters with content
-  const tocChapters = chapters.filter(c => c.current_content?.content || c.memory_count > 0);
-  if (tocChapters.length > 0) {
+  // Table of contents
+  if (chaptersWithStories.length > 0) {
     pages.push(
       <Page key="toc" number={1}>
         <div className="h-full">
@@ -182,14 +175,14 @@ export default function MemoirPage() {
             Contents
           </h2>
           <div className="space-y-3">
-            {tocChapters.map((chapter) => (
+            {chaptersWithStories.map((chapter) => (
               <div
                 key={chapter.id}
                 className="flex justify-between items-center text-foreground"
               >
                 <span className="font-serif">{chapter.title}</span>
                 <span className="text-sm text-muted-foreground">
-                  {chapter.memory_count} {chapter.memory_count === 1 ? "story" : "stories"}
+                  {chapter.stories.length} {chapter.stories.length === 1 ? "story" : "stories"}
                 </span>
               </div>
             ))}
@@ -199,117 +192,96 @@ export default function MemoirPage() {
     );
   }
 
-  // Chapter pages with narratives - only show chapters with content
+  // Chapter pages with stories
   let pageNum = 2;
-  tocChapters.forEach((chapter) => {
-    if (chapter.current_content?.content) {
-      const content = chapter.current_content.content.trim();
-
-      // Split content into chunks for multiple pages
-      const charsPerPage = 2700; // Characters per page (after first page with title)
-      const firstPageChars = 2500; // Less chars on first page due to title
-      const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
-
-      const contentPages: string[] = [];
-      let currentChunk = "";
-      let isFirstPage = true;
-
-      paragraphs.forEach((paragraph) => {
-        const limit = isFirstPage ? firstPageChars : charsPerPage;
-        if (currentChunk.length + paragraph.length > limit && currentChunk.length > 0) {
-          contentPages.push(currentChunk.trim());
-          currentChunk = paragraph + "\n\n";
-          isFirstPage = false;
-        } else {
-          currentChunk += paragraph + "\n\n";
-        }
-      });
-      if (currentChunk.trim()) {
-        contentPages.push(currentChunk.trim());
+  chaptersWithStories.forEach((chapter) => {
+    // Combine all stories in chapter into content
+    const allContent = chapter.stories.map((story, idx) => {
+      let storyText = "";
+      if (story.title) {
+        storyText += `### ${story.title}\n\n`;
       }
+      if (story.time_period && idx === 0) {
+        // Only show time period for first story or if it differs
+      }
+      storyText += story.content;
+      return storyText;
+    }).join("\n\n---\n\n");
 
-      // Render pages
-      contentPages.forEach((pageContent, idx) => {
-        const isFirst = idx === 0;
-        pages.push(
-          <Page key={`${chapter.id}-content-${idx}-${pageNum}`} number={pageNum++}>
-            <div className="h-full overflow-hidden memoir-content">
-              {/* Chapter header - only on first page */}
-              {isFirst && (
-                <div className="text-center mb-4">
-                  <h2 className="text-xl font-serif font-bold text-foreground">
-                    {chapter.title}
-                  </h2>
-                  {chapter.time_period_start && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {chapter.time_period_start}
-                      {chapter.time_period_end && chapter.time_period_end !== chapter.time_period_start
-                        ? ` - ${chapter.time_period_end}`
-                        : ""}
-                    </p>
-                  )}
-                  <div className="w-12 h-0.5 bg-primary/30 mx-auto mt-2" />
-                </div>
-              )}
-              {/* Chapter content */}
-              <ReactMarkdown
-                components={{
-                  p: ({ children }) => (
-                    <p className="text-foreground font-serif leading-relaxed mb-3 text-sm">
-                      {children}
-                    </p>
-                  ),
-                  h1: ({ children }) => (
-                    <h1 className="text-foreground font-serif font-bold text-lg mb-2">{children}</h1>
-                  ),
-                  h2: ({ children }) => (
-                    <h2 className="text-foreground font-serif font-bold text-base mb-2">{children}</h2>
-                  ),
-                  h3: ({ children }) => (
-                    <h3 className="text-foreground font-serif font-semibold text-sm mb-1.5">{children}</h3>
-                  ),
-                  ul: ({ children }) => (
-                    <ul className="text-foreground font-serif text-sm list-disc pl-4 mb-3 space-y-1">{children}</ul>
-                  ),
-                  ol: ({ children }) => (
-                    <ol className="text-foreground font-serif text-sm list-decimal pl-4 mb-3 space-y-1">{children}</ol>
-                  ),
-                  li: ({ children }) => (
-                    <li className="text-foreground leading-relaxed">{children}</li>
-                  ),
-                  strong: ({ children }) => (
-                    <strong className="font-semibold">{children}</strong>
-                  ),
-                  em: ({ children }) => (
-                    <em className="italic">{children}</em>
-                  ),
-                }}
-              >
-                {pageContent}
-              </ReactMarkdown>
-            </div>
-          </Page>
-        );
-      });
-    } else if (chapter.memory_count > 0) {
-      // Has memories but no generated content yet - show prompt to regenerate
+    // Split content into chunks for multiple pages
+    const charsPerPage = 2700;
+    const firstPageChars = 2500;
+    const paragraphs = allContent.split(/\n\n+/).filter(p => p.trim());
+
+    const contentPages: string[] = [];
+    let currentChunk = "";
+    let isFirstPage = true;
+
+    paragraphs.forEach((paragraph) => {
+      const limit = isFirstPage ? firstPageChars : charsPerPage;
+      if (currentChunk.length + paragraph.length > limit && currentChunk.length > 0) {
+        contentPages.push(currentChunk.trim());
+        currentChunk = paragraph + "\n\n";
+        isFirstPage = false;
+      } else {
+        currentChunk += paragraph + "\n\n";
+      }
+    });
+    if (currentChunk.trim()) {
+      contentPages.push(currentChunk.trim());
+    }
+
+    // Render pages
+    contentPages.forEach((pageContent, idx) => {
+      const isFirst = idx === 0;
       pages.push(
-        <Page key={`${chapter.id}-pending`} number={pageNum++}>
-          <div className="h-full flex flex-col items-center justify-center text-center">
-            <h2 className="text-xl font-serif font-bold text-foreground mb-2">
-              {chapter.title}
-            </h2>
-            <div className="w-12 h-0.5 bg-primary/30 mb-4" />
-            <p className="text-muted-foreground font-serif italic">
-              {chapter.memory_count} {chapter.memory_count === 1 ? "story" : "stories"} captured
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Tap &quot;Regenerate&quot; to create this chapter&apos;s narrative
-            </p>
+        <Page key={`${chapter.id}-content-${idx}-${pageNum}`} number={pageNum++}>
+          <div className="h-full overflow-hidden memoir-content">
+            {isFirst && (
+              <div className="text-center mb-4">
+                <h2 className="text-xl font-serif font-bold text-foreground">
+                  {chapter.title}
+                </h2>
+                {chapter.time_period_start && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {chapter.time_period_start}
+                    {chapter.time_period_end && chapter.time_period_end !== chapter.time_period_start
+                      ? ` - ${chapter.time_period_end}`
+                      : ""}
+                  </p>
+                )}
+                <div className="w-12 h-0.5 bg-primary/30 mx-auto mt-2" />
+              </div>
+            )}
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => (
+                  <p className="text-foreground font-serif leading-relaxed mb-3 text-sm">
+                    {children}
+                  </p>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-foreground font-serif font-semibold text-base mb-2 mt-4">{children}</h3>
+                ),
+                hr: () => (
+                  <div className="my-4 flex justify-center">
+                    <div className="w-16 h-0.5 bg-primary/20" />
+                  </div>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold">{children}</strong>
+                ),
+                em: ({ children }) => (
+                  <em className="italic">{children}</em>
+                ),
+              }}
+            >
+              {pageContent}
+            </ReactMarkdown>
           </div>
         </Page>
       );
-    }
+    });
   });
 
   // End page
@@ -328,12 +300,9 @@ export default function MemoirPage() {
     </Page>
   );
 
-  // For showCover mode: first and last pages are single, middle pages are spreads
-  // We need total pages to work with the cover logic
-  // Add blank page before the end page if needed for proper spread pairing
-  const middlePageCount = pages.length - 2; // exclude cover and end
+  // Add blank page before end if needed for proper spread pairing
+  const middlePageCount = pages.length - 2;
   if (middlePageCount % 2 !== 0) {
-    // Insert blank before end page to make middle pages even
     pages.splice(pages.length - 1, 0, <Page key="blank"><div /></Page>);
   }
 
@@ -347,38 +316,38 @@ export default function MemoirPage() {
             Your life stories, beautifully preserved
           </p>
         </div>
-        {totalMemories > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRegenerate}
-            disabled={regenerating}
-          >
-            {regenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            Regenerate
-          </Button>
-        )}
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/chapters">
+            <List className="h-4 w-4 mr-2" />
+            Manage Chapters
+          </Link>
+        </Button>
       </div>
 
       {/* Book Container */}
       <div ref={containerRef} className="flex-1 flex flex-col items-center justify-center min-h-0 overflow-hidden">
-        {totalMemories === 0 ? (
+        {totalStories === 0 ? (
           <Card className="p-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium">Your memoir is empty</h3>
             <p className="text-muted-foreground mt-2">
               Start a conversation to begin capturing your stories
             </p>
+            <Button className="mt-4" asChild>
+              <Link href="/chapters">
+                <List className="h-4 w-4 mr-2" />
+                Add Stories
+              </Link>
+            </Button>
           </Card>
         ) : (
           <>
-            <div className={`book-container flex-1 w-full flex items-center justify-center ${
-              targetPage === 0 ? 'cover-page-view' : targetPage >= pages.length - 1 ? 'back-page-view' : ''
-            }`}>
+            <div
+              className={`book-container flex-1 w-full flex items-center justify-center ${
+                targetPage === 0 ? 'cover-page-view' : targetPage >= pages.length - 1 ? 'back-page-view' : ''
+              }`}
+              onClick={handleBookClick}
+            >
               {/* @ts-ignore - react-pageflip types are incomplete */}
               <HTMLFlipBook
                 key={`${bookSize.width}-${bookSize.height}`}
@@ -457,15 +426,12 @@ export default function MemoirPage() {
         .dark .stf__wrapper {
           box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
         }
-        /* Center cover page (shown on right half, move wrapper left) */
         .cover-page-view .stf__wrapper {
           transform: translateX(-25%) !important;
         }
-        /* Center back page (shown on left half, move wrapper right) */
         .back-page-view .stf__wrapper {
           transform: translateX(25%) !important;
         }
-        /* Hide shadow on empty side for single pages */
         .cover-page-view .stf__parent,
         .back-page-view .stf__parent,
         .cover-page-view .stf__wrapper,
@@ -474,7 +440,6 @@ export default function MemoirPage() {
         .back-page-view .book-shadow {
           box-shadow: none !important;
         }
-        /* Apply shadow only to the visible page */
         .cover-page-view .stf__wrapper .stf__item:last-child,
         .back-page-view .stf__wrapper .stf__item:first-child {
           box-shadow: 0 20px 60px rgba(60, 40, 20, 0.3), 0 0 30px rgba(60, 40, 20, 0.25);

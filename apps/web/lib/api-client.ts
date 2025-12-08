@@ -288,7 +288,23 @@ export const chatApi = {
     ),
 };
 
-// Memoir API (Chapters & Narratives)
+// Memoir API (Chapters & Stories)
+export interface ChapterStory {
+  id: string;
+  chapter_id: string;
+  user_id: string;
+  title: string | null;
+  content: string;
+  summary: string | null;
+  time_period: string | null;
+  source_type: 'chat' | 'call' | 'manual';
+  source_id: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MemoirChapter {
   id: string;
   user_id: string;
@@ -299,26 +315,19 @@ export interface MemoirChapter {
   time_period_start: string | null;
   time_period_end: string | null;
   is_default: boolean;
-  memory_count: number;
+  story_count: number;
   created_at: string;
   updated_at: string;
-  current_content?: ChapterContent | null;
-}
-
-export interface ChapterContent {
-  id: string;
-  chapter_id: string;
-  content: string;
-  version: number;
-  word_count: number;
-  memory_ids: string[];
-  is_current: boolean;
-  generated_at: string;
+  stories: ChapterStory[];
 }
 
 export const memoirApi = {
+  // Chapters
   getChapters: () =>
     request<{ chapters: MemoirChapter[] }>(() => api.get("/memoir/chapters")),
+
+  getChapter: (chapterId: string) =>
+    request<{ chapter: MemoirChapter }>(() => api.get(`/memoir/chapters/${chapterId}`)),
 
   createChapter: (data: {
     title: string;
@@ -328,17 +337,13 @@ export const memoirApi = {
   }) =>
     request<{ chapter: MemoirChapter }>(() => api.post("/memoir/chapters", data)),
 
-  regenerateChapter: (chapterId: string) =>
-    request<{ success: boolean; content: ChapterContent | null }>(() =>
-      api.post(`/memoir/chapters/${chapterId}/regenerate`)
-    ),
-
-  regenerateAll: () =>
-    request<{
-      success: boolean;
-      regenerated: number;
-      results: Array<{ chapterId: string; title: string; success: boolean }>;
-    }>(() => api.post("/memoir/regenerate-all")),
+  updateChapter: (chapterId: string, data: {
+    title?: string;
+    description?: string;
+    time_period_start?: string;
+    time_period_end?: string;
+  }) =>
+    request<{ chapter: MemoirChapter }>(() => api.put(`/memoir/chapters/${chapterId}`, data)),
 
   reorderChapters: (chapters: Array<{ id: string; order: number }>) =>
     request<{ success: boolean }>(() =>
@@ -348,6 +353,33 @@ export const memoirApi = {
   deleteChapter: (chapterId: string) =>
     request<{ success: boolean }>(() =>
       api.delete(`/memoir/chapters/${chapterId}`)
+    ),
+
+  // Stories
+  getStory: (storyId: string) =>
+    request<{ story: ChapterStory }>(() => api.get(`/memoir/stories/${storyId}`)),
+
+  createStory: (data: {
+    chapter_id?: string;
+    title?: string;
+    content: string;
+    summary?: string;
+    time_period?: string;
+  }) =>
+    request<{ story: ChapterStory }>(() => api.post("/memoir/stories", data)),
+
+  updateStory: (storyId: string, data: {
+    title?: string;
+    content?: string;
+    summary?: string;
+    time_period?: string;
+    chapter_id?: string;
+  }) =>
+    request<{ story: ChapterStory }>(() => api.put(`/memoir/stories/${storyId}`, data)),
+
+  deleteStory: (storyId: string) =>
+    request<{ success: boolean }>(() =>
+      api.delete(`/memoir/stories/${storyId}`)
     ),
 };
 

@@ -20,14 +20,33 @@ import type { User } from '@supabase/supabase-js';
 export class MemoirController {
   constructor(private memoirService: MemoirService) {}
 
+  // ==================== CHAPTERS ====================
+
   @Get('chapters')
   async getChapters(@CurrentUser() user: User) {
     try {
-      const chapters = await this.memoirService.getChaptersWithContent(user.id);
+      const chapters = await this.memoirService.getChaptersWithStories(user.id);
       return { chapters };
     } catch (error) {
       throw new HttpException(
         'Failed to fetch chapters',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('chapters/:id')
+  async getChapter(@CurrentUser() user: User, @Param('id') chapterId: string) {
+    try {
+      const chapter = await this.memoirService.getChapterById(user.id, chapterId);
+      if (!chapter) {
+        throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);
+      }
+      return { chapter };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to fetch chapter',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -65,6 +84,7 @@ export class MemoirController {
 
       return { chapter };
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new HttpException(
         (error as Error).message || 'Failed to create chapter',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -72,24 +92,35 @@ export class MemoirController {
     }
   }
 
-  @Post('chapters/:id/regenerate')
-  async regenerateChapter(
+  @Put('chapters/:id')
+  async updateChapter(
     @CurrentUser() user: User,
     @Param('id') chapterId: string,
+    @Body()
+    body: {
+      title?: string;
+      description?: string;
+      time_period_start?: string;
+      time_period_end?: string;
+    },
   ) {
     try {
-      const content = await this.memoirService.generateChapterNarrative(
-        user.id,
-        chapterId,
-      );
+      const chapter = await this.memoirService.updateChapter(user.id, chapterId, {
+        title: body.title?.trim(),
+        description: body.description?.trim(),
+        timePeriodStart: body.time_period_start,
+        timePeriodEnd: body.time_period_end,
+      });
 
-      return {
-        success: !!content,
-        content,
-      };
+      if (!chapter) {
+        throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);
+      }
+
+      return { chapter };
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new HttpException(
-        'Failed to regenerate chapter',
+        'Failed to update chapter',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -101,10 +132,7 @@ export class MemoirController {
     @Body() body: { chapters: Array<{ id: string; order: number }> },
   ) {
     if (!Array.isArray(body.chapters)) {
-      throw new HttpException(
-        'Invalid chapters array',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('Invalid chapters array', HttpStatus.BAD_REQUEST);
     }
 
     try {
@@ -137,36 +165,113 @@ export class MemoirController {
     }
   }
 
-  @Post('regenerate-all')
-  async regenerateAllChapters(@CurrentUser() user: User) {
+  // ==================== STORIES ====================
+
+  @Get('stories/:id')
+  async getStory(@CurrentUser() user: User, @Param('id') storyId: string) {
     try {
-      const chapters = await this.memoirService.getOrCreateChapters(user.id);
-
-      // Regenerate each chapter with content
-      const results = await Promise.all(
-        chapters
-          .filter((c) => c.memory_count > 0)
-          .map(async (chapter) => {
-            const content = await this.memoirService.generateChapterNarrative(
-              user.id,
-              chapter.id,
-            );
-            return {
-              chapterId: chapter.id,
-              title: chapter.title,
-              success: !!content,
-            };
-          }),
+      const story = await this.memoirService.getStoryById(user.id, storyId);
+      if (!story) {
+        throw new HttpException('Story not found', HttpStatus.NOT_FOUND);
+      }
+      return { story };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to fetch story',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
 
-      return {
-        success: true,
-        regenerated: results.filter((r) => r.success).length,
-        results,
-      };
+  @Post('stories')
+  async createStory(
+    @CurrentUser() user: User,
+    @Body()
+    body: {
+      chapter_id?: string;
+      title?: string;
+      content: string;
+      summary?: string;
+      time_period?: string;
+    },
+  ) {
+    if (!body.content?.trim()) {
+      throw new HttpException('Content is required', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      const story = await this.memoirService.createStory({
+        userId: user.id,
+        chapterId: body.chapter_id,
+        title: body.title?.trim(),
+        content: body.content.trim(),
+        summary: body.summary?.trim(),
+        timePeriod: body.time_period,
+        sourceType: 'manual',
+      });
+
+      if (!story) {
+        throw new HttpException(
+          'Failed to create story',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return { story };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        (error as Error).message || 'Failed to create story',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Put('stories/:id')
+  async updateStory(
+    @CurrentUser() user: User,
+    @Param('id') storyId: string,
+    @Body()
+    body: {
+      title?: string;
+      content?: string;
+      summary?: string;
+      time_period?: string;
+      chapter_id?: string;
+    },
+  ) {
+    try {
+      const story = await this.memoirService.updateStory(user.id, storyId, {
+        title: body.title?.trim(),
+        content: body.content?.trim(),
+        summary: body.summary?.trim(),
+        timePeriod: body.time_period,
+        chapterId: body.chapter_id,
+      });
+
+      if (!story) {
+        throw new HttpException('Story not found', HttpStatus.NOT_FOUND);
+      }
+
+      return { story };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to update story',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete('stories/:id')
+  async deleteStory(@CurrentUser() user: User, @Param('id') storyId: string) {
+    try {
+      const success = await this.memoirService.deleteStory(user.id, storyId);
+      return { success };
     } catch (error) {
       throw new HttpException(
-        'Failed to regenerate chapters',
+        'Failed to delete story',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
