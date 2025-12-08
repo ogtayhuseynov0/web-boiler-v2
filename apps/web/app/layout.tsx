@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Boilerplate",
-  description: "Next.js + NestJS + Supabase Boilerplate",
+  title: "Memoir - Turn Your Memories Into a Living Story",
+  description: "Just talk. Share your stories, experiences, and memories through natural conversation. Our AI transforms your words into a beautiful memoir you can treasure forever.",
 };
 
 export default function RootLayout({
