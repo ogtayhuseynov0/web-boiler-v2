@@ -449,6 +449,24 @@ export default function MemoirPage() {
         .back-page-view .stf__wrapper {
           transform: translateX(25%) !important;
         }
+        /* Hide shadow on empty side for single pages */
+        .cover-page-view .stf__parent,
+        .back-page-view .stf__parent,
+        .cover-page-view .stf__wrapper,
+        .back-page-view .stf__wrapper,
+        .cover-page-view .book-shadow,
+        .back-page-view .book-shadow {
+          box-shadow: none !important;
+        }
+        /* Apply shadow only to the visible page */
+        .cover-page-view .stf__wrapper .stf__item:last-child,
+        .back-page-view .stf__wrapper .stf__item:first-child {
+          box-shadow: 0 20px 60px rgba(60, 40, 20, 0.3), 0 0 30px rgba(60, 40, 20, 0.25);
+        }
+        .dark .cover-page-view .stf__wrapper .stf__item:last-child,
+        .dark .back-page-view .stf__wrapper .stf__item:first-child {
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 0, 0, 0.4);
+        }
       `}</style>
     </div>
   );
