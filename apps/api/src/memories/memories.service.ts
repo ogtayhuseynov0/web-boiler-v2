@@ -60,7 +60,7 @@ export class MemoriesService {
       chapterId = assignment.chapterId;
       timePeriod = assignment.timePeriod || data.time_period || null;
     } catch (error) {
-      this.logger.warn('Failed to assign chapter, will save without chapter:', error);
+      this.logger.error('Failed to assign chapter, will save without chapter. Error:', (error as Error).message || error);
     }
 
     const { data: memory, error } = await supabase
@@ -85,15 +85,19 @@ export class MemoriesService {
       return null;
     }
 
-    this.logger.log(`Memory created with id: ${memory.id} in chapter: ${chapterId}`);
+    this.logger.log(`Memory created with id: ${memory.id} in chapter: ${chapterId || 'none'}`);
 
     // Queue chapter regeneration if assigned
     if (chapterId) {
+      this.logger.log(`Queuing chapter regeneration for chapter ${chapterId}...`);
       try {
         await this.memoirService.queueChapterRegeneration(data.user_id, chapterId);
+        this.logger.log(`Chapter regeneration queued successfully`);
       } catch (error) {
-        this.logger.warn('Failed to queue chapter regeneration:', error);
+        this.logger.error('Failed to queue chapter regeneration:', (error as Error).message);
       }
+    } else {
+      this.logger.warn('No chapter assigned, skipping regeneration queue');
     }
 
     return memory;

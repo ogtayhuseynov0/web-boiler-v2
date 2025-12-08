@@ -58,14 +58,16 @@ export class MemoirService {
   async getOrCreateChapters(userId: string): Promise<MemoirChapter[]> {
     const supabase = this.supabaseService.getClient();
 
+    this.logger.log(`Getting or creating chapters for user ${userId}`);
+
     // Use the database function to get or create default chapters
     const { data, error } = await supabase.rpc('get_or_create_default_chapters', {
       p_user_id: userId,
     });
 
     if (error) {
-      this.logger.error('Failed to get/create chapters:', error);
-      throw error;
+      this.logger.error('Failed to get/create chapters via RPC:', error.message, error.details, error.hint);
+      throw new Error(`Failed to get/create chapters: ${error.message}`);
     }
 
     // Fetch full chapter data
@@ -369,15 +371,19 @@ Write the narrative now:`;
   async queueChapterRegeneration(userId: string, chapterId: string): Promise<void> {
     this.logger.log(`Queueing regeneration for chapter ${chapterId}`);
 
-    // Add to queue with debounce (5 second delay to batch multiple memories)
-    await this.queueService.addJob('regenerate-chapter', {
-      userId,
-      chapterId,
-      timestamp: Date.now(),
-    }, {
-      delay: 5000, // 5 second delay
-      jobId: `regen-${chapterId}`, // Dedupe by chapter
-    });
+    try {
+      // Add to queue with short delay - use unique jobId to allow multiple regenerations
+      await this.queueService.addJob('regenerate-chapter', {
+        userId,
+        chapterId,
+        timestamp: Date.now(),
+      }, {
+        delay: 3000, // 3 second delay
+      });
+      this.logger.log(`Successfully queued regeneration for chapter ${chapterId}`);
+    } catch (error) {
+      this.logger.error(`Failed to queue regeneration for chapter ${chapterId}:`, error);
+    }
   }
 
   /**

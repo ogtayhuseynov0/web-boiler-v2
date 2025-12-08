@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, forwardRef } from "react";
 import HTMLFlipBook from "react-pageflip";
+import ReactMarkdown from "react-markdown";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft, ChevronRight, BookOpen, RefreshCw } from "lucide-react";
@@ -215,54 +216,70 @@ export default function MemoirPage() {
     // Narrative content pages
     if (chapter.current_content?.content) {
       const content = chapter.current_content.content;
-      // Split into paragraphs
-      const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
-
-      // Estimate characters per page (roughly 1500 chars with current styling)
+      // Split into chunks for pagination
       const charsPerPage = 1200;
-      let currentPageContent: string[] = [];
-      let currentCharCount = 0;
+      const chunks: string[] = [];
 
-      paragraphs.forEach((paragraph, idx) => {
-        if (currentCharCount + paragraph.length > charsPerPage && currentPageContent.length > 0) {
-          // Create a page with current content
-          pages.push(
-            <Page key={`${chapter.id}-content-${pageNum}`} number={pageNum++}>
-              <div className="h-full overflow-hidden">
-                <div className="prose prose-sm max-w-none">
-                  {currentPageContent.map((p, i) => (
-                    <p key={i} className="text-foreground font-serif leading-relaxed mb-4 text-sm">
-                      {p}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </Page>
-          );
-          currentPageContent = [paragraph];
-          currentCharCount = paragraph.length;
+      // Split by double newlines but keep reasonable chunks
+      const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
+      let currentChunk = "";
+
+      paragraphs.forEach((paragraph) => {
+        if (currentChunk.length + paragraph.length > charsPerPage && currentChunk.length > 0) {
+          chunks.push(currentChunk.trim());
+          currentChunk = paragraph + "\n\n";
         } else {
-          currentPageContent.push(paragraph);
-          currentCharCount += paragraph.length;
+          currentChunk += paragraph + "\n\n";
         }
       });
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+      }
 
-      // Add remaining content
-      if (currentPageContent.length > 0) {
+      // Create pages for each chunk
+      chunks.forEach((chunk, idx) => {
         pages.push(
-          <Page key={`${chapter.id}-content-final-${pageNum}`} number={pageNum++}>
-            <div className="h-full overflow-hidden">
-              <div className="prose prose-sm max-w-none">
-                {currentPageContent.map((p, i) => (
-                  <p key={i} className="text-foreground font-serif leading-relaxed mb-4 text-sm">
-                    {p}
-                  </p>
-                ))}
-              </div>
+          <Page key={`${chapter.id}-content-${idx}-${pageNum}`} number={pageNum++}>
+            <div className="h-full overflow-hidden memoir-content">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => (
+                    <p className="text-foreground font-serif leading-relaxed mb-3 text-[13px]">
+                      {children}
+                    </p>
+                  ),
+                  h1: ({ children }) => (
+                    <h1 className="text-foreground font-serif font-bold text-base mb-2">{children}</h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-foreground font-serif font-bold text-sm mb-2">{children}</h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-foreground font-serif font-semibold text-[13px] mb-2">{children}</h3>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="text-foreground font-serif text-[13px] list-disc pl-4 mb-3 space-y-1">{children}</ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="text-foreground font-serif text-[13px] list-decimal pl-4 mb-3 space-y-1">{children}</ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="text-foreground leading-relaxed">{children}</li>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-semibold">{children}</strong>
+                  ),
+                  em: ({ children }) => (
+                    <em className="italic">{children}</em>
+                  ),
+                }}
+              >
+                {chunk}
+              </ReactMarkdown>
             </div>
           </Page>
         );
-      }
+      });
     } else if (chapter.memory_count === 0) {
       // Empty chapter placeholder
       pages.push(
