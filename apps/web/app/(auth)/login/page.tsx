@@ -124,7 +124,7 @@ function LoginPageContent() {
             )}
           </div>
           <h1 className="text-2xl font-bold">
-            {step === "phone" ? "Welcome to Ringy" : "Enter verification code"}
+            {step === "phone" ? "Welcome to Memoir" : "Enter verification code"}
           </h1>
           <p className="mt-2 text-muted-foreground">
             {step === "phone" ? (

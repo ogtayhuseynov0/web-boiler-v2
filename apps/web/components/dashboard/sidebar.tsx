@@ -19,9 +19,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Calls", href: "/calls", icon: Phone },
-  { name: "Memories", href: "/memories", icon: Brain },
+  { name: "Home", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Sessions", href: "/calls", icon: Phone },
+  { name: "Stories", href: "/memories", icon: Brain },
 ];
 
 const settingsNavigation = [
@@ -45,7 +45,7 @@ export function Sidebar() {
     <>
       <div className="flex h-16 items-center gap-2 px-6 border-b border-border dark:border-border/50">
         <Link href="/" className="flex items-center gap-2 group">
-          <span className="text-xl font-bold">Ringy</span>
+          <span className="text-xl font-bold">Memoir</span>
         </Link>
       </div>
 

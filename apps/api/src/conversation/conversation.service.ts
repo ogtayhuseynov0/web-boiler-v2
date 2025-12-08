@@ -145,11 +145,11 @@ export class ConversationService {
     if (!user) {
       // New caller - start onboarding
       greeting =
-        "Hi there! Welcome to Ringy, your AI personal assistant. I don't recognize your number yet. What's your name? I'd love to know what to call you.";
+        "Hi there! Welcome to Memoir. I'm here to help you capture and preserve your life stories. What's your name?";
       state = 'onboarding';
     } else if (!user.onboarding_completed) {
       // Known user but not onboarded
-      greeting = `Welcome back! I have your number saved, but we haven't finished setting things up. What would you like me to call you?`;
+      greeting = `Welcome back to Memoir! I have your number saved. What would you like me to call you?`;
       state = 'onboarding';
     } else {
       // Check balance
@@ -158,11 +158,11 @@ export class ConversationService {
       );
 
       if (!hasBalance) {
-        greeting = `Hi ${user.preferred_name || user.full_name || 'there'}! I'm sorry, but you're out of credits. Please add more balance on our website to continue using the service. Have a great day!`;
+        greeting = `Hi ${user.preferred_name || user.full_name || 'there'}! I'm sorry, but you're out of credits. Please add more balance on our website to continue capturing your stories. Have a great day!`;
         state = 'ending';
       } else {
         const displayName = user.preferred_name || user.full_name || 'there';
-        greeting = `Hey ${displayName}! Great to hear from you. How can I help you today?`;
+        greeting = `Hey ${displayName}! So good to hear from you. What story or memory would you like to share today?`;
         state = 'active';
       }
     }
@@ -323,7 +323,7 @@ export class ConversationService {
     await this.callSessionService.setState(session.callSid, 'active');
 
     return {
-      response: `Great to meet you, ${extractedName}! I'm your AI personal assistant. I can help you with reminders, answer questions, or just chat. What would you like to talk about?`,
+      response: `Wonderful to meet you, ${extractedName}! I'm Memoir, and I'm here to help you capture and preserve your life stories. What would you like to share first? Maybe a favorite childhood memory, or something special about your family?`,
     };
   }
 
@@ -341,7 +341,7 @@ export class ConversationService {
     ) {
       await this.callSessionService.setState(session.callSid, 'ending');
       return {
-        response: `Goodbye${session.preferredName ? `, ${session.preferredName}` : ''}! It was great talking with you. Talk soon!`,
+        response: `Thank you for sharing your stories${session.preferredName ? `, ${session.preferredName}` : ''}! I've saved everything. Looking forward to hearing more next time. Take care!`,
         shouldEnd: true,
       };
     }

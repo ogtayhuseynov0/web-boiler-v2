@@ -2,19 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Users, Activity, CreditCard, TrendingUp } from "lucide-react";
-import { profileApi, Profile } from "@/lib/api-client";
+import { Button } from "@/components/ui/button";
+import { Loader2, BookOpen, MessageSquare, Brain, Mic } from "lucide-react";
+import { profileApi, Profile, memoriesApi, callsApi } from "@/lib/api-client";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [stats, setStats] = useState({ memories: 0, sessions: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const profileRes = await profileApi.get();
+      const [profileRes, memoriesRes, callsRes] = await Promise.all([
+        profileApi.get(),
+        memoriesApi.list({ limit: 1 }),
+        callsApi.list({ limit: 1 }),
+      ]);
       if (profileRes.data) {
         setProfile(profileRes.data);
       }
+      setStats({
+        memories: memoriesRes.data?.total || 0,
+        sessions: callsRes.data?.total || 0,
+      });
       setLoading(false);
     };
     fetchData();
@@ -31,66 +42,71 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">Your Memoir</h1>
         <p className="text-muted-foreground">
-          Welcome back, {profile?.full_name || "there"}!
+          Welcome back, {profile?.preferred_name || profile?.full_name || "there"}. Ready to capture more of your story?
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Stories Captured</CardTitle>
+            <Brain className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">+0% from last month</p>
+            <div className="text-2xl font-bold">{stats.memories}</div>
+            <p className="text-xs text-muted-foreground">memories from your life</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Now</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Sessions</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">+0% from last hour</p>
+            <div className="text-2xl font-bold">{stats.sessions}</div>
+            <p className="text-xs text-muted-foreground">storytelling conversations</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Your Memoir</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$0</div>
-            <p className="text-xs text-muted-foreground">+0% from last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Growth</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0%</div>
-            <p className="text-xs text-muted-foreground">+0% from last month</p>
+            <div className="text-2xl font-bold">Building...</div>
+            <p className="text-xs text-muted-foreground">keep sharing to grow it</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Getting Started</CardTitle>
+          <CardTitle>Start Sharing Your Story</CardTitle>
           <CardDescription>
-            This is your dashboard. Customize it to fit your needs.
+            Talk or type to capture your memories, experiences, and life moments.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Start building your application by adding components and features.
+            Every conversation helps build your personal memoir. Share stories about your childhood,
+            career, relationships, travels, or any moments that matter to you.
           </p>
+          <div className="flex gap-3">
+            <Button asChild>
+              <Link href="/calls">
+                <Mic className="mr-2 h-4 w-4" />
+                Start Talking
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/memories">
+                <Brain className="mr-2 h-4 w-4" />
+                View Memories
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

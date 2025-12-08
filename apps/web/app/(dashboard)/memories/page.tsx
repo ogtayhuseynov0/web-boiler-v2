@@ -139,9 +139,9 @@ export default function MemoriesPage() {
       <div className="flex-shrink-0">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Memories</h1>
+            <h1 className="text-3xl font-bold">Your Stories</h1>
             <p className="text-muted-foreground mt-1">
-              What the AI has learned about you from conversations
+              Memories and moments captured from your conversations
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
