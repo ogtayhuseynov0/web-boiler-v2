@@ -82,8 +82,8 @@ export default function MemoirPage() {
       if (profileRes.data) {
         setUserName(
           profileRes.data.preferred_name ||
-            profileRes.data.full_name ||
-            "Your"
+          profileRes.data.full_name ||
+          "Your"
         );
       }
       setLoading(false);
@@ -187,64 +187,92 @@ export default function MemoirPage() {
     if (chapter.current_content?.content) {
       const content = chapter.current_content.content.trim();
 
-      // Chapter with content - title + content on same page
-      pages.push(
-        <Page key={`${chapter.id}-content-${pageNum}`} number={pageNum++}>
-          <div className="h-full overflow-y-auto memoir-content">
-            {/* Chapter header */}
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-serif font-bold text-foreground">
-                {chapter.title}
-              </h2>
-              {chapter.time_period_start && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {chapter.time_period_start}
-                  {chapter.time_period_end && chapter.time_period_end !== chapter.time_period_start
-                    ? ` - ${chapter.time_period_end}`
-                    : ""}
-                </p>
+      // Split content into chunks for multiple pages
+      const charsPerPage = 2700; // Characters per page (after first page with title)
+      const firstPageChars = 2500; // Less chars on first page due to title
+      const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
+
+      const contentPages: string[] = [];
+      let currentChunk = "";
+      let isFirstPage = true;
+
+      paragraphs.forEach((paragraph) => {
+        const limit = isFirstPage ? firstPageChars : charsPerPage;
+        if (currentChunk.length + paragraph.length > limit && currentChunk.length > 0) {
+          contentPages.push(currentChunk.trim());
+          currentChunk = paragraph + "\n\n";
+          isFirstPage = false;
+        } else {
+          currentChunk += paragraph + "\n\n";
+        }
+      });
+      if (currentChunk.trim()) {
+        contentPages.push(currentChunk.trim());
+      }
+
+      // Render pages
+      contentPages.forEach((pageContent, idx) => {
+        const isFirst = idx === 0;
+        pages.push(
+          <Page key={`${chapter.id}-content-${idx}-${pageNum}`} number={pageNum++}>
+            <div className="h-full overflow-hidden memoir-content">
+              {/* Chapter header - only on first page */}
+              {isFirst && (
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-serif font-bold text-foreground">
+                    {chapter.title}
+                  </h2>
+                  {chapter.time_period_start && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {chapter.time_period_start}
+                      {chapter.time_period_end && chapter.time_period_end !== chapter.time_period_start
+                        ? ` - ${chapter.time_period_end}`
+                        : ""}
+                    </p>
+                  )}
+                  <div className="w-12 h-0.5 bg-primary/30 mx-auto mt-2" />
+                </div>
               )}
-              <div className="w-12 h-0.5 bg-primary/30 mx-auto mt-2" />
+              {/* Chapter content */}
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => (
+                    <p className="text-foreground font-serif leading-relaxed mb-3 text-sm">
+                      {children}
+                    </p>
+                  ),
+                  h1: ({ children }) => (
+                    <h1 className="text-foreground font-serif font-bold text-lg mb-2">{children}</h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-foreground font-serif font-bold text-base mb-2">{children}</h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-foreground font-serif font-semibold text-sm mb-1.5">{children}</h3>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="text-foreground font-serif text-sm list-disc pl-4 mb-3 space-y-1">{children}</ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="text-foreground font-serif text-sm list-decimal pl-4 mb-3 space-y-1">{children}</ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="text-foreground leading-relaxed">{children}</li>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-semibold">{children}</strong>
+                  ),
+                  em: ({ children }) => (
+                    <em className="italic">{children}</em>
+                  ),
+                }}
+              >
+                {pageContent}
+              </ReactMarkdown>
             </div>
-            {/* Chapter content */}
-            <ReactMarkdown
-              components={{
-                p: ({ children }) => (
-                  <p className="text-foreground font-serif leading-relaxed mb-3 text-sm">
-                    {children}
-                  </p>
-                ),
-                h1: ({ children }) => (
-                  <h1 className="text-foreground font-serif font-bold text-lg mb-2">{children}</h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="text-foreground font-serif font-bold text-base mb-2">{children}</h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-foreground font-serif font-semibold text-sm mb-1.5">{children}</h3>
-                ),
-                ul: ({ children }) => (
-                  <ul className="text-foreground font-serif text-sm list-disc pl-4 mb-3 space-y-1">{children}</ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="text-foreground font-serif text-sm list-decimal pl-4 mb-3 space-y-1">{children}</ol>
-                ),
-                li: ({ children }) => (
-                  <li className="text-foreground leading-relaxed">{children}</li>
-                ),
-                strong: ({ children }) => (
-                  <strong className="font-semibold">{children}</strong>
-                ),
-                em: ({ children }) => (
-                  <em className="italic">{children}</em>
-                ),
-              }}
-            >
-              {content}
-            </ReactMarkdown>
-          </div>
-        </Page>
-      );
+          </Page>
+        );
+      });
     } else if (chapter.memory_count === 0) {
       // Empty chapter - just title
       pages.push(
