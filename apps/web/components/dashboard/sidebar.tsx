@@ -12,6 +12,7 @@ import {
   Phone,
   Brain,
   CreditCard,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Home", href: "/dashboard", icon: LayoutDashboard },
   { name: "Sessions", href: "/calls", icon: Phone },
   { name: "Stories", href: "/memories", icon: Brain },
+  { name: "Memoir", href: "/memoir", icon: BookOpen },
 ];
 
 const settingsNavigation = [
