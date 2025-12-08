@@ -313,9 +313,13 @@ export default function MemoirPage() {
     </Page>
   );
 
-  // Ensure even number of pages for proper book layout
-  if (pages.length % 2 !== 0) {
-    pages.push(<Page key="blank"><div /></Page>);
+  // For showCover mode: first and last pages are single, middle pages are spreads
+  // We need total pages to work with the cover logic
+  // Add blank page before the end page if needed for proper spread pairing
+  const middlePageCount = pages.length - 2; // exclude cover and end
+  if (middlePageCount % 2 !== 0) {
+    // Insert blank before end page to make middle pages even
+    pages.splice(pages.length - 1, 0, <Page key="blank"><div /></Page>);
   }
 
   return (
@@ -357,7 +361,9 @@ export default function MemoirPage() {
           </Card>
         ) : (
           <>
-            <div className="book-container flex-1 w-full flex items-center justify-center">
+            <div className={`book-container flex-1 w-full flex items-center justify-center ${
+              currentPage === 0 ? 'cover-page-view' : currentPage >= pages.length - 1 ? 'back-page-view' : ''
+            }`}>
               {/* @ts-ignore - react-pageflip types are incomplete */}
               <HTMLFlipBook
                 key={`${bookSize.width}-${bookSize.height}`}
@@ -419,6 +425,7 @@ export default function MemoirPage() {
         }
         .stf__wrapper {
           box-shadow: 0 0 30px rgba(60, 40, 20, 0.25);
+          transition: transform 0.5s ease;
         }
         .page {
           background: oklch(0.95 0.02 75);
@@ -433,6 +440,14 @@ export default function MemoirPage() {
         }
         .dark .stf__wrapper {
           box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+        }
+        /* Center cover page (shown on right half, move wrapper left) */
+        .cover-page-view .stf__wrapper {
+          transform: translateX(-25%) !important;
+        }
+        /* Center back page (shown on left half, move wrapper right) */
+        .back-page-view .stf__wrapper {
+          transform: translateX(25%) !important;
         }
       `}</style>
     </div>
