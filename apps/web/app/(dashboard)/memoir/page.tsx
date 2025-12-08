@@ -335,15 +335,12 @@ export default function MemoirPage() {
       <style jsx global>{`
         .book-container {
           perspective: 3000px;
-          max-height: calc(100% - 60px);
         }
         .book-shadow {
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-          border-radius: 4px;
         }
         .stf__wrapper {
           box-shadow: 0 0 30px rgba(0, 0, 0, 0.25);
-          margin: 0 auto !important;
         }
         .page {
           background: linear-gradient(
@@ -362,9 +359,6 @@ export default function MemoirPage() {
             #292524 100%
           );
           box-shadow: inset -2px 0 10px rgba(0, 0, 0, 0.2);
-        }
-        .stf__parent {
-          margin: 0 auto !important;
         }
       `}</style>
     </div>
