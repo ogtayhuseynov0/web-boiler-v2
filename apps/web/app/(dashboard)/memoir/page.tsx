@@ -16,10 +16,10 @@ interface PageProps {
 
 const Page = forwardRef<HTMLDivElement, PageProps>(({ children, number }, ref) => {
   return (
-    <div ref={ref} className="page h-full w-full p-6 flex flex-col">
-      <div className="flex-1 overflow-hidden min-h-0">{children}</div>
+    <div ref={ref} className="page h-full w-full p-6 relative">
+      <div className="overflow-hidden pb-8">{children}</div>
       {number !== undefined && (
-        <div className="text-center text-xs text-muted-foreground pt-2 flex-shrink-0">
+        <div className="absolute bottom-4 left-0 right-0 text-center text-xs text-muted-foreground">
           {number}
         </div>
       )}
