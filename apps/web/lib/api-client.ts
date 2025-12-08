@@ -288,6 +288,69 @@ export const chatApi = {
     ),
 };
 
+// Memoir API (Chapters & Narratives)
+export interface MemoirChapter {
+  id: string;
+  user_id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  display_order: number;
+  time_period_start: string | null;
+  time_period_end: string | null;
+  is_default: boolean;
+  memory_count: number;
+  created_at: string;
+  updated_at: string;
+  current_content?: ChapterContent | null;
+}
+
+export interface ChapterContent {
+  id: string;
+  chapter_id: string;
+  content: string;
+  version: number;
+  word_count: number;
+  memory_ids: string[];
+  is_current: boolean;
+  generated_at: string;
+}
+
+export const memoirApi = {
+  getChapters: () =>
+    request<{ chapters: MemoirChapter[] }>(() => api.get("/memoir/chapters")),
+
+  createChapter: (data: {
+    title: string;
+    description?: string;
+    time_period_start?: string;
+    time_period_end?: string;
+  }) =>
+    request<{ chapter: MemoirChapter }>(() => api.post("/memoir/chapters", data)),
+
+  regenerateChapter: (chapterId: string) =>
+    request<{ success: boolean; content: ChapterContent | null }>(() =>
+      api.post(`/memoir/chapters/${chapterId}/regenerate`)
+    ),
+
+  regenerateAll: () =>
+    request<{
+      success: boolean;
+      regenerated: number;
+      results: Array<{ chapterId: string; title: string; success: boolean }>;
+    }>(() => api.post("/memoir/regenerate-all")),
+
+  reorderChapters: (chapters: Array<{ id: string; order: number }>) =>
+    request<{ success: boolean }>(() =>
+      api.put("/memoir/chapters/reorder", { chapters })
+    ),
+
+  deleteChapter: (chapterId: string) =>
+    request<{ success: boolean }>(() =>
+      api.delete(`/memoir/chapters/${chapterId}`)
+    ),
+};
+
 // Conversation API (ElevenLabs)
 export const conversationApi = {
   getSignedUrl: () =>

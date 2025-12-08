@@ -4,8 +4,9 @@ import React, { useEffect, useState, useRef, forwardRef } from "react";
 import HTMLFlipBook from "react-pageflip";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
-import { memoriesApi, Memory, profileApi } from "@/lib/api-client";
+import { Loader2, ChevronLeft, ChevronRight, BookOpen, RefreshCw } from "lucide-react";
+import { memoirApi, MemoirChapter, profileApi } from "@/lib/api-client";
+import { toast } from "sonner";
 
 interface PageProps {
   children: React.ReactNode;
@@ -27,30 +28,11 @@ const Page = forwardRef<HTMLDivElement, PageProps>(({ children, number }, ref) =
 
 Page.displayName = "Page";
 
-function groupMemoriesByCategory(memories: Memory[]) {
-  const groups: Record<string, Memory[]> = {};
-  memories.forEach((m) => {
-    if (!groups[m.category]) {
-      groups[m.category] = [];
-    }
-    groups[m.category].push(m);
-  });
-  return groups;
-}
-
-const categoryTitles: Record<string, string> = {
-  relationship: "Family & Relationships",
-  fact: "Life Facts",
-  preference: "Preferences & Values",
-  reminder: "Important Dates",
-  task: "Goals & Aspirations",
-  other: "Other Memories",
-};
-
 export default function MemoirPage() {
-  const [memories, setMemories] = useState<Memory[]>([]);
+  const [chapters, setChapters] = useState<MemoirChapter[]>([]);
   const [userName, setUserName] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [bookSize, setBookSize] = useState({ width: 550, height: 700 });
   const bookRef = useRef<any>(null);
@@ -61,16 +43,14 @@ export default function MemoirPage() {
     const updateSize = () => {
       if (containerRef.current) {
         const container = containerRef.current;
-        const availableHeight = container.clientHeight - 80; // Leave room for nav
+        const availableHeight = container.clientHeight - 80;
         const availableWidth = container.clientWidth;
 
-        // Book aspect ratio ~0.7 (width/height for open book is ~1.4)
         const pageRatio = 0.7;
 
         let height = availableHeight;
         let width = height * pageRatio;
 
-        // If width is too large, constrain by width
         if (width * 2 > availableWidth - 40) {
           width = (availableWidth - 40) / 2;
           height = width / pageRatio;
@@ -90,13 +70,13 @@ export default function MemoirPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [memoriesRes, profileRes] = await Promise.all([
-        memoriesApi.list({ limit: 100 }),
+      const [chaptersRes, profileRes] = await Promise.all([
+        memoirApi.getChapters(),
         profileApi.get(),
       ]);
 
-      if (memoriesRes.data?.memories) {
-        setMemories(memoriesRes.data.memories);
+      if (chaptersRes.data?.chapters) {
+        setChapters(chaptersRes.data.chapters);
       }
       if (profileRes.data) {
         setUserName(
@@ -110,8 +90,21 @@ export default function MemoirPage() {
     fetchData();
   }, []);
 
-  const groupedMemories = groupMemoriesByCategory(memories);
-  const categories = Object.keys(groupedMemories);
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    const res = await memoirApi.regenerateAll();
+    if (res.data?.success) {
+      toast.success(`Regenerated ${res.data.regenerated} chapters`);
+      // Refresh chapters
+      const chaptersRes = await memoirApi.getChapters();
+      if (chaptersRes.data?.chapters) {
+        setChapters(chaptersRes.data.chapters);
+      }
+    } else {
+      toast.error("Failed to regenerate chapters");
+    }
+    setRegenerating(false);
+  };
 
   const handlePrevPage = () => {
     if (bookRef.current) {
@@ -128,6 +121,10 @@ export default function MemoirPage() {
   const onFlip = (e: any) => {
     setCurrentPage(e.data);
   };
+
+  // Get chapters with content
+  const chaptersWithContent = chapters.filter(c => c.current_content?.content);
+  const totalMemories = chapters.reduce((sum, c) => sum + c.memory_count, 0);
 
   if (loading) {
     return (
@@ -153,7 +150,7 @@ export default function MemoirPage() {
         </p>
         <div className="mt-8 w-24 h-0.5 bg-primary/30" />
         <p className="mt-4 text-sm text-muted-foreground">
-          {memories.length} memories captured
+          {totalMemories} memories across {chapters.length} chapters
         </p>
       </div>
     </Page>
@@ -167,16 +164,14 @@ export default function MemoirPage() {
           Contents
         </h2>
         <div className="space-y-3">
-          {categories.map((cat, idx) => (
+          {chapters.map((chapter) => (
             <div
-              key={cat}
+              key={chapter.id}
               className="flex justify-between items-center text-foreground"
             >
-              <span className="font-serif">
-                {categoryTitles[cat] || cat}
-              </span>
+              <span className="font-serif">{chapter.title}</span>
               <span className="text-sm text-muted-foreground">
-                {groupedMemories[cat].length} stories
+                {chapter.memory_count} {chapter.memory_count === 1 ? "story" : "stories"}
               </span>
             </div>
           ))}
@@ -185,51 +180,114 @@ export default function MemoirPage() {
     </Page>
   );
 
-  // Category pages with memories
+  // Chapter pages with narratives
   let pageNum = 2;
-  categories.forEach((category) => {
-    const categoryMemories = groupedMemories[category];
-
-    // Category title page
+  chapters.forEach((chapter) => {
+    // Chapter title page
     pages.push(
-      <Page key={`${category}-title`} number={pageNum++}>
+      <Page key={`${chapter.id}-title`} number={pageNum++}>
         <div className="h-full flex flex-col items-center justify-center text-center">
           <div className="w-16 h-0.5 bg-primary/30 mb-4" />
           <h2 className="text-2xl font-serif font-bold text-foreground">
-            {categoryTitles[category] || category}
+            {chapter.title}
           </h2>
           <div className="w-16 h-0.5 bg-primary/30 mt-4" />
+          {chapter.description && (
+            <p className="mt-4 text-muted-foreground text-sm italic max-w-xs">
+              {chapter.description}
+            </p>
+          )}
+          {chapter.time_period_start && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {chapter.time_period_start}
+              {chapter.time_period_end && chapter.time_period_end !== chapter.time_period_start
+                ? ` - ${chapter.time_period_end}`
+                : ""}
+            </p>
+          )}
           <p className="mt-6 text-muted-foreground text-sm">
-            {categoryMemories.length} memories
+            {chapter.memory_count} {chapter.memory_count === 1 ? "memory" : "memories"}
           </p>
         </div>
       </Page>
     );
 
-    // Memory pages (4 memories per page)
-    const memoriesPerPage = 4;
-    for (let i = 0; i < categoryMemories.length; i += memoriesPerPage) {
-      const pageMemories = categoryMemories.slice(i, i + memoriesPerPage);
-      pages.push(
-        <Page key={`${category}-${i}`} number={pageNum++}>
-          <div className="space-y-4">
-            {pageMemories.map((memory) => (
-              <div
-                key={memory.id}
-                className="pb-4 border-b border-border last:border-0"
-              >
-                <p className="text-foreground font-serif leading-relaxed">
-                  {memory.content}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(memory.created_at).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
+    // Narrative content pages
+    if (chapter.current_content?.content) {
+      const content = chapter.current_content.content;
+      // Split into paragraphs
+      const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
+
+      // Estimate characters per page (roughly 1500 chars with current styling)
+      const charsPerPage = 1200;
+      let currentPageContent: string[] = [];
+      let currentCharCount = 0;
+
+      paragraphs.forEach((paragraph, idx) => {
+        if (currentCharCount + paragraph.length > charsPerPage && currentPageContent.length > 0) {
+          // Create a page with current content
+          pages.push(
+            <Page key={`${chapter.id}-content-${pageNum}`} number={pageNum++}>
+              <div className="h-full overflow-hidden">
+                <div className="prose prose-sm max-w-none">
+                  {currentPageContent.map((p, i) => (
+                    <p key={i} className="text-foreground font-serif leading-relaxed mb-4 text-sm">
+                      {p}
+                    </p>
+                  ))}
+                </div>
               </div>
-            ))}
+            </Page>
+          );
+          currentPageContent = [paragraph];
+          currentCharCount = paragraph.length;
+        } else {
+          currentPageContent.push(paragraph);
+          currentCharCount += paragraph.length;
+        }
+      });
+
+      // Add remaining content
+      if (currentPageContent.length > 0) {
+        pages.push(
+          <Page key={`${chapter.id}-content-final-${pageNum}`} number={pageNum++}>
+            <div className="h-full overflow-hidden">
+              <div className="prose prose-sm max-w-none">
+                {currentPageContent.map((p, i) => (
+                  <p key={i} className="text-foreground font-serif leading-relaxed mb-4 text-sm">
+                    {p}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </Page>
+        );
+      }
+    } else if (chapter.memory_count === 0) {
+      // Empty chapter placeholder
+      pages.push(
+        <Page key={`${chapter.id}-empty`} number={pageNum++}>
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <p className="text-muted-foreground font-serif italic">
+              This chapter awaits your stories...
+            </p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Share memories to fill these pages
+            </p>
+          </div>
+        </Page>
+      );
+    } else {
+      // Has memories but no generated content yet
+      pages.push(
+        <Page key={`${chapter.id}-pending`} number={pageNum++}>
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <p className="text-muted-foreground font-serif italic">
+              {chapter.memory_count} {chapter.memory_count === 1 ? "story" : "stories"} captured
+            </p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Tap &quot;Regenerate&quot; to create this chapter&apos;s narrative
+            </p>
           </div>
         </Page>
       );
@@ -260,16 +318,33 @@ export default function MemoirPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 mb-6">
-        <h1 className="text-3xl font-bold">Your Memoir</h1>
-        <p className="text-muted-foreground mt-1">
-          Your life stories, beautifully preserved
-        </p>
+      <div className="flex-shrink-0 mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Your Memoir</h1>
+          <p className="text-muted-foreground mt-1">
+            Your life stories, beautifully preserved
+          </p>
+        </div>
+        {totalMemories > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRegenerate}
+            disabled={regenerating}
+          >
+            {regenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Regenerate
+          </Button>
+        )}
       </div>
 
       {/* Book Container */}
       <div ref={containerRef} className="flex-1 flex flex-col items-center justify-center min-h-0 overflow-hidden">
-        {memories.length === 0 ? (
+        {totalMemories === 0 ? (
           <Card className="p-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium">Your memoir is empty</h3>

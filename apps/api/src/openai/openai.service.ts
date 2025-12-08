@@ -21,6 +21,8 @@ export interface Memory {
   content: string;
   category: string;
   importance: number;
+  time_period?: string | null;
+  time_context?: string | null;
 }
 
 @Injectable()
@@ -138,13 +140,14 @@ RULES:
 2. Write as natural statements (use "Grew up in...", "Met spouse...", "Worked at...", "Loves...", etc.)
 3. NEVER start with "User" - just state the story/fact directly
 4. Be specific - include names, places, dates, emotions when shared
-5. Prioritize:
+5. Extract time period references when mentioned (years, decades, life stages)
+6. Prioritize:
    - Family stories and relationships
    - Childhood and growing up memories
    - Career and life milestones
    - Meaningful experiences and lessons learned
    - Personal preferences and values
-6. DO NOT extract:
+7. DO NOT extract:
    - Generic small talk
    - Anything already in the "ALREADY KNOWN" list
 
@@ -154,15 +157,15 @@ Each memory object:
 - content: The story or fact (natural statement, NOT starting with "User")
 - category: "preference" | "fact" | "task" | "reminder" | "relationship" | "other"
 - importance: 0.0-1.0 (how meaningful to their life story)
+- time_period: Normalized time reference like "1960s", "childhood", "college", "early-career", "2015", or null if unclear
+- time_context: The exact time phrase from the memory (e.g., "when I was 8", "back in '72", "during college") or null
 
 GOOD examples:
-- "Grew up on a farm in Kansas with three siblings"
-- "Met spouse Sarah at college in 1985"
-- "Worked as a nurse for 30 years at Memorial Hospital"
-- "Mom's name is Helen, passed away in 2010"
-- "Favorite childhood memory is fishing trips with grandfather"
-- "Moved to California in 1990 for a fresh start"
-- "Has two children: Michael and Emma"
+- {"content": "Grew up on a farm in Kansas with three siblings", "category": "fact", "importance": 0.8, "time_period": "childhood", "time_context": "grew up"}
+- {"content": "Met spouse Sarah at college in 1985", "category": "relationship", "importance": 0.9, "time_period": "1985", "time_context": "at college in 1985"}
+- {"content": "Worked as a nurse for 30 years at Memorial Hospital", "category": "fact", "importance": 0.8, "time_period": "career", "time_context": "for 30 years"}
+- {"content": "Mom's name is Helen, passed away in 2010", "category": "relationship", "importance": 0.9, "time_period": "2010", "time_context": "passed away in 2010"}
+- {"content": "Favorite childhood memory is fishing trips with grandfather", "category": "relationship", "importance": 0.7, "time_period": "childhood", "time_context": "childhood memory"}
 
 BAD examples (don't extract):
 - "User said they grew up..." (don't use "User")

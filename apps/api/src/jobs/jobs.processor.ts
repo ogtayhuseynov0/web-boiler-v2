@@ -1,8 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { MemoriesService } from '../memories/memories.service';
 import { CallsService } from '../calls/calls.service';
+import { MemoirService } from '../memoir/memoir.service';
 
 export interface ExtractMemoriesJobData {
   callId: string;
@@ -14,6 +15,12 @@ export interface CalculateCallCostJobData {
   durationSeconds: number;
 }
 
+export interface RegenerateChapterJobData {
+  userId: string;
+  chapterId: string;
+  timestamp: number;
+}
+
 @Processor('jobs')
 export class JobsProcessor extends WorkerHost {
   private readonly logger = new Logger(JobsProcessor.name);
@@ -21,6 +28,8 @@ export class JobsProcessor extends WorkerHost {
   constructor(
     private memoriesService: MemoriesService,
     private callsService: CallsService,
+    @Inject(forwardRef(() => MemoirService))
+    private memoirService: MemoirService,
   ) {
     super();
   }
@@ -36,6 +45,12 @@ export class JobsProcessor extends WorkerHost {
       case 'calculate-call-cost':
         await this.processCalculateCallCost(
           job.data as CalculateCallCostJobData,
+        );
+        break;
+
+      case 'regenerate-chapter':
+        await this.processRegenerateChapter(
+          job.data as RegenerateChapterJobData,
         );
         break;
 
@@ -105,6 +120,22 @@ export class JobsProcessor extends WorkerHost {
       this.logger.log(`Successfully charged for call ${callId}`);
     } catch (error) {
       this.logger.error(`Failed to charge for call ${callId}:`, error);
+      throw error;
+    }
+  }
+
+  private async processRegenerateChapter(
+    data: RegenerateChapterJobData,
+  ): Promise<void> {
+    const { userId, chapterId } = data;
+
+    this.logger.log(`Regenerating chapter ${chapterId} for user ${userId}`);
+
+    try {
+      await this.memoirService.processChapterRegeneration(userId, chapterId);
+      this.logger.log(`Successfully regenerated chapter ${chapterId}`);
+    } catch (error) {
+      this.logger.error(`Failed to regenerate chapter ${chapterId}:`, error);
       throw error;
     }
   }

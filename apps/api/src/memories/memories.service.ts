@@ -1,14 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { OpenAIService } from '../openai/openai.service';
+import { MemoirService } from '../memoir/memoir.service';
 
 export interface Memory {
   id: string;
   user_id: string;
   call_id: string | null;
+  chapter_id: string | null;
   content: string;
   category: 'preference' | 'fact' | 'task' | 'reminder' | 'relationship' | 'other';
   importance_score: number;
+  time_period: string | null;
+  time_context: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -20,6 +24,8 @@ export interface CreateMemoryDto {
   content: string;
   category: Memory['category'];
   importance_score?: number;
+  time_period?: string | null;
+  time_context?: string | null;
 }
 
 @Injectable()
@@ -29,6 +35,8 @@ export class MemoriesService {
   constructor(
     private supabaseService: SupabaseService,
     private openaiService: OpenAIService,
+    @Inject(forwardRef(() => MemoirService))
+    private memoirService: MemoirService,
   ) {}
 
   async createMemory(data: CreateMemoryDto): Promise<Memory | null> {
@@ -39,14 +47,33 @@ export class MemoriesService {
     // Generate embedding for the memory content
     const embedding = await this.openaiService.generateEmbedding(data.content);
 
+    // Assign to appropriate chapter
+    let chapterId: string | null = null;
+    let timePeriod = data.time_period || null;
+
+    try {
+      const assignment = await this.memoirService.assignChapter(
+        data.user_id,
+        data.content,
+        data.time_period,
+      );
+      chapterId = assignment.chapterId;
+      timePeriod = assignment.timePeriod || data.time_period || null;
+    } catch (error) {
+      this.logger.warn('Failed to assign chapter, will save without chapter:', error);
+    }
+
     const { data: memory, error } = await supabase
       .from('user_memories')
       .insert({
         user_id: data.user_id,
         call_id: data.call_id || null,
+        chapter_id: chapterId,
         content: data.content,
         category: data.category,
         importance_score: data.importance_score || 0.5,
+        time_period: timePeriod,
+        time_context: data.time_context || null,
         embedding: embedding,
         is_active: true,
       })
@@ -58,7 +85,17 @@ export class MemoriesService {
       return null;
     }
 
-    this.logger.log(`Memory created with id: ${memory.id}`);
+    this.logger.log(`Memory created with id: ${memory.id} in chapter: ${chapterId}`);
+
+    // Queue chapter regeneration if assigned
+    if (chapterId) {
+      try {
+        await this.memoirService.queueChapterRegeneration(data.user_id, chapterId);
+      } catch (error) {
+        this.logger.warn('Failed to queue chapter regeneration:', error);
+      }
+    }
+
     return memory;
   }
 
@@ -208,6 +245,8 @@ export class MemoriesService {
         content: extracted.content,
         category: extracted.category as Memory['category'],
         importance_score: extracted.importance,
+        time_period: extracted.time_period || null,
+        time_context: extracted.time_context || null,
       });
 
       if (memory) {
