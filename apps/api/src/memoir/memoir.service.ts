@@ -418,6 +418,16 @@ export class MemoirService {
       return [];
     }
 
+    // Check for existing stories from this source to avoid duplicates
+    let existingStories: ChapterStory[] = [];
+    if (sourceId) {
+      existingStories = await this.getStoriesBySource(userId, sourceId);
+      if (existingStories.length > 0) {
+        this.logger.log(`Found ${existingStories.length} existing stories for source ${sourceId}, skipping extraction`);
+        return [];
+      }
+    }
+
     const conversationText = messages
       .filter((m) => m.role === 'user')
       .map((m) => m.content)

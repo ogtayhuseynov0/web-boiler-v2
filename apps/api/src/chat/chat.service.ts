@@ -205,9 +205,6 @@ export class ChatService {
       this.logger.error('Failed to store assistant message:', assistantMsgError);
     }
 
-    // Queue story extraction (async)
-    this.queueStoryExtraction(userId, sessionId);
-
     return {
       response: responseContent,
       messageId: assistantMessage?.id || userMessage.id,
@@ -271,29 +268,6 @@ export class ChatService {
     });
 
     return true;
-  }
-
-  private async queueStoryExtraction(userId: string, sessionId: string): Promise<void> {
-    try {
-      // Get last few messages for extraction
-      const supabase = this.supabaseService.getClient();
-      const { data: messages } = await supabase
-        .from('conversation_messages')
-        .select('role, content')
-        .eq('call_id', sessionId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (messages && messages.length >= 4) {
-        // Only extract after a few exchanges
-        await this.queueService.addJob('extract-stories', {
-          callId: sessionId,
-          userId,
-        });
-      }
-    } catch (error) {
-      this.logger.warn('Failed to queue story extraction:', error);
-    }
   }
 
   async getUserSessions(
