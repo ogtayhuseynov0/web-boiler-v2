@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, forwardRef } from "react";
 import HTMLFlipBook from "react-pageflip";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,9 @@ interface PageProps {
   number?: number;
 }
 
-const Page = ({ children, number }: PageProps) => {
+const Page = forwardRef<HTMLDivElement, PageProps>(({ children, number }, ref) => {
   return (
-    <div className="page bg-amber-50 dark:bg-amber-950/30 h-full w-full p-8 flex flex-col shadow-lg">
+    <div ref={ref} className="page bg-amber-50 dark:bg-amber-950/30 h-full w-full p-8 flex flex-col">
       <div className="flex-1 overflow-hidden">{children}</div>
       {number !== undefined && (
         <div className="text-center text-sm text-muted-foreground mt-4">
@@ -23,7 +23,9 @@ const Page = ({ children, number }: PageProps) => {
       )}
     </div>
   );
-};
+});
+
+Page.displayName = "Page";
 
 function groupMemoriesByCategory(memories: Memory[]) {
   const groups: Record<string, Memory[]> = {};
@@ -243,32 +245,25 @@ export default function MemoirPage() {
           </Card>
         ) : (
           <>
-            <div className="book-container relative">
+            <div className="book-container">
               {/* @ts-ignore - react-pageflip types are incomplete */}
               <HTMLFlipBook
                 ref={bookRef}
                 width={350}
                 height={500}
-                size="stretch"
-                minWidth={280}
-                maxWidth={400}
-                minHeight={400}
-                maxHeight={550}
                 showCover={true}
-                flippingTime={600}
-                usePortrait={true}
-                startZIndex={0}
-                autoSize={true}
-                maxShadowOpacity={0.3}
-                mobileScrollSupport={true}
+                flippingTime={800}
+                usePortrait={false}
+                maxShadowOpacity={0.5}
+                mobileScrollSupport={false}
                 onFlip={onFlip}
-                className="book"
+                className="book-shadow"
                 style={{}}
                 startPage={0}
                 drawShadow={true}
                 useMouseEvents={true}
                 swipeDistance={30}
-                clickEventForward={true}
+                clickEventForward={false}
                 showPageCorners={true}
                 disableFlipByClick={false}
               >
@@ -277,7 +272,7 @@ export default function MemoirPage() {
             </div>
 
             {/* Navigation */}
-            <div className="flex items-center gap-4 mt-6">
+            <div className="flex items-center gap-4 mt-8">
               <Button
                 variant="outline"
                 size="icon"
@@ -304,10 +299,14 @@ export default function MemoirPage() {
 
       <style jsx global>{`
         .book-container {
-          perspective: 2000px;
+          perspective: 3000px;
         }
-        .book {
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        .book-shadow {
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          border-radius: 4px;
+        }
+        .stf__wrapper {
+          box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
         }
         .page {
           background: linear-gradient(
@@ -316,7 +315,7 @@ export default function MemoirPage() {
             #fffbeb 50%,
             #fef3c7 100%
           );
-          border-radius: 0 8px 8px 0;
+          box-shadow: inset -2px 0 10px rgba(0, 0, 0, 0.05);
         }
         .dark .page {
           background: linear-gradient(
@@ -325,6 +324,10 @@ export default function MemoirPage() {
             #1c1917 50%,
             #292524 100%
           );
+          box-shadow: inset -2px 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .stf__parent {
+          margin: 0 auto;
         }
       `}</style>
     </div>
