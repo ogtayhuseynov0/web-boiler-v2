@@ -1,11 +1,10 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { MemoriesService } from '../memories/memories.service';
 import { CallsService } from '../calls/calls.service';
 import { MemoirService } from '../memoir/memoir.service';
 
-export interface ExtractMemoriesJobData {
+export interface ExtractStoriesJobData {
   callId: string;
   userId: string;
 }
@@ -15,18 +14,11 @@ export interface CalculateCallCostJobData {
   durationSeconds: number;
 }
 
-export interface RegenerateChapterJobData {
-  userId: string;
-  chapterId: string;
-  timestamp: number;
-}
-
 @Processor('jobs')
 export class JobsProcessor extends WorkerHost {
   private readonly logger = new Logger(JobsProcessor.name);
 
   constructor(
-    private memoriesService: MemoriesService,
     private callsService: CallsService,
     @Inject(forwardRef(() => MemoirService))
     private memoirService: MemoirService,
@@ -38,8 +30,8 @@ export class JobsProcessor extends WorkerHost {
     this.logger.log(`Processing job ${job.name} (${job.id})`);
 
     switch (job.name) {
-      case 'extract-memories':
-        await this.processExtractMemories(job.data as ExtractMemoriesJobData);
+      case 'extract-stories':
+        await this.processExtractStories(job.data as ExtractStoriesJobData);
         break;
 
       case 'calculate-call-cost':
@@ -48,23 +40,17 @@ export class JobsProcessor extends WorkerHost {
         );
         break;
 
-      case 'regenerate-chapter':
-        await this.processRegenerateChapter(
-          job.data as RegenerateChapterJobData,
-        );
-        break;
-
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
     }
   }
 
-  private async processExtractMemories(
-    data: ExtractMemoriesJobData,
+  private async processExtractStories(
+    data: ExtractStoriesJobData,
   ): Promise<void> {
     const { callId, userId } = data;
 
-    this.logger.log(`Extracting memories from call ${callId}`);
+    this.logger.log(`Extracting stories from call ${callId}`);
 
     try {
       // Get conversation messages
@@ -73,7 +59,7 @@ export class JobsProcessor extends WorkerHost {
       this.logger.log(`Call ${callId} has ${messages.length} messages`);
 
       if (messages.length < 2) {
-        this.logger.log(`Call ${callId} has insufficient messages for memory extraction`);
+        this.logger.log(`Call ${callId} has insufficient messages for story extraction`);
         return;
       }
 
@@ -86,22 +72,22 @@ export class JobsProcessor extends WorkerHost {
         }));
 
       this.logger.log(`Filtered to ${conversationMessages.length} conversation messages`);
-      this.logger.debug(`Messages: ${JSON.stringify(conversationMessages.slice(0, 3))}...`);
 
-      // Extract and save memories
-      const extractedMemories =
-        await this.memoriesService.extractAndSaveMemories(
+      // Extract and save stories
+      const extractedStories =
+        await this.memoirService.extractStoriesFromConversation(
           userId,
-          callId,
           conversationMessages,
+          'chat',
+          callId,
         );
 
       this.logger.log(
-        `Extracted ${extractedMemories.length} memories from call ${callId}`,
+        `Extracted ${extractedStories.length} stories from call ${callId}`,
       );
     } catch (error) {
       this.logger.error(
-        `Failed to extract memories from call ${callId}:`,
+        `Failed to extract stories from call ${callId}:`,
         error,
       );
       throw error; // Re-throw to trigger retry

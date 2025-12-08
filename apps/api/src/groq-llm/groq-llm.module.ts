@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { GroqLlmController } from './groq-llm.controller';
 import { GroqLlmService } from './groq-llm.service';
-import { MemoriesModule } from '../memories/memories.module';
+import { MemoirModule } from '../memoir/memoir.module';
 
 @Module({
-  imports: [ConfigModule, MemoriesModule],
+  imports: [ConfigModule, MemoirModule],
   controllers: [GroqLlmController],
   providers: [GroqLlmService],
   exports: [GroqLlmService],

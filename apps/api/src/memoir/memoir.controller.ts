@@ -167,6 +167,25 @@ export class MemoirController {
 
   // ==================== STORIES ====================
 
+  @Get('stories/by-source/:sourceId')
+  async getStoriesBySource(
+    @CurrentUser() user: User,
+    @Param('sourceId') sourceId: string,
+  ) {
+    try {
+      const stories = await this.memoirService.getStoriesBySource(
+        user.id,
+        sourceId,
+      );
+      return { stories };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to fetch stories',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('stories/:id')
   async getStory(@CurrentUser() user: User, @Param('id') storyId: string) {
     try {

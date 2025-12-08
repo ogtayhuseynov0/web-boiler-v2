@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
-import { MemoriesModule } from '../memories/memories.module';
 import { QueueModule } from '../queue/queue.module';
+import { MemoirModule } from '../memoir/memoir.module';
 
 @Module({
-  imports: [MemoriesModule, QueueModule],
+  imports: [QueueModule, MemoirModule],
   controllers: [ChatController],
   providers: [ChatService],
   exports: [ChatService],

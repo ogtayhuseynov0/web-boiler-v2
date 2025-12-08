@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { OpenAIService, ConversationMessage } from '../openai/openai.service';
-import { MemoriesService } from '../memories/memories.service';
+import { MemoirService } from '../memoir/memoir.service';
 import { QueueService } from '../queue/queue.service';
 
 export interface ChatSession {
@@ -29,7 +29,7 @@ export class ChatService {
   constructor(
     private supabaseService: SupabaseService,
     private openaiService: OpenAIService,
-    private memoriesService: MemoriesService,
+    private memoirService: MemoirService,
     private queueService: QueueService,
   ) {}
 
@@ -170,12 +170,15 @@ export class ChatService {
 
     const userName = profile?.preferred_name || profile?.full_name || 'friend';
 
-    // Get relevant memories
-    const memories = await this.memoriesService.searchSimilarMemories(userId, content, 5);
-    const memoryContext = memories.map(m => ({ content: m.content, category: m.category }));
+    // Get recent stories for context
+    const chapters = await this.memoirService.getChaptersWithStories(userId);
+    const recentStories = chapters
+      .flatMap(c => c.stories)
+      .slice(0, 5)
+      .map(s => ({ content: s.summary || s.content.substring(0, 200), category: s.title || 'story' }));
 
     // Build system prompt
-    const systemPrompt = this.openaiService.buildSystemPrompt(userName, memoryContext);
+    const systemPrompt = this.openaiService.buildSystemPrompt(userName, recentStories);
 
     // Get AI response
     const aiResponse = await this.openaiService.chat(conversationHistory, {
@@ -202,8 +205,8 @@ export class ChatService {
       this.logger.error('Failed to store assistant message:', assistantMsgError);
     }
 
-    // Queue memory extraction (async)
-    this.queueMemoryExtraction(userId, sessionId);
+    // Queue story extraction (async)
+    this.queueStoryExtraction(userId, sessionId);
 
     return {
       response: responseContent,
@@ -261,8 +264,8 @@ export class ChatService {
       return false;
     }
 
-    // Trigger final memory extraction
-    await this.queueService.addJob('extract-memories', {
+    // Trigger final story extraction
+    await this.queueService.addJob('extract-stories', {
       callId: sessionId,
       userId,
     });
@@ -270,7 +273,7 @@ export class ChatService {
     return true;
   }
 
-  private async queueMemoryExtraction(userId: string, sessionId: string): Promise<void> {
+  private async queueStoryExtraction(userId: string, sessionId: string): Promise<void> {
     try {
       // Get last few messages for extraction
       const supabase = this.supabaseService.getClient();
@@ -283,13 +286,13 @@ export class ChatService {
 
       if (messages && messages.length >= 4) {
         // Only extract after a few exchanges
-        await this.queueService.addJob('extract-memories', {
+        await this.queueService.addJob('extract-stories', {
           callId: sessionId,
           userId,
         });
       }
     } catch (error) {
-      this.logger.warn('Failed to queue memory extraction:', error);
+      this.logger.warn('Failed to queue story extraction:', error);
     }
   }
 

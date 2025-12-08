@@ -331,6 +331,9 @@ export const memoirApi = {
   getStory: (storyId: string) =>
     request<{ story: ChapterStory }>(() => api.get(`/memoir/stories/${storyId}`)),
 
+  getStoriesBySource: (sourceId: string) =>
+    request<{ stories: ChapterStory[] }>(() => api.get(`/memoir/stories/by-source/${sourceId}`)),
+
   createStory: (data: {
     chapter_id?: string;
     title?: string;

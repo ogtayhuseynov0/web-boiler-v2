@@ -22,7 +22,7 @@ import { useState } from "react";
 const navigation = [
   { name: "Home", href: "/dashboard", icon: LayoutDashboard },
   { name: "Sessions", href: "/calls", icon: Phone },
-  { name: "Stories", href: "/memories", icon: Brain },
+  { name: "Chapters", href: "/chapters", icon: Brain },
   { name: "Memoir", href: "/memoir", icon: BookOpen },
 ];
 

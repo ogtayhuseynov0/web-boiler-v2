@@ -304,6 +304,25 @@ export class MemoirService {
     return story;
   }
 
+  async getStoriesBySource(userId: string, sourceId: string): Promise<ChapterStory[]> {
+    const supabase = this.supabaseService.getClient();
+
+    const { data: stories, error } = await supabase
+      .from('chapter_stories')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('source_id', sourceId)
+      .eq('is_active', true)
+      .order('created_at');
+
+    if (error) {
+      this.logger.error('Failed to fetch stories by source:', error);
+      return [];
+    }
+
+    return stories || [];
+  }
+
   async updateStory(
     userId: string,
     storyId: string,

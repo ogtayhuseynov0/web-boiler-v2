@@ -23,9 +23,10 @@ import {
   ArrowDownLeft,
   Calendar,
   BookOpen,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
-import { callsApi, Call, ConversationMessage } from "@/lib/api-client";
+import { callsApi, Call, ConversationMessage, memoirApi, ChapterStory } from "@/lib/api-client";
 
 function formatDuration(seconds: number): string {
   if (!seconds) return "0:00";
@@ -62,6 +63,7 @@ export default function CallDetailPage() {
 
   const [call, setCall] = useState<Call | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [stories, setStories] = useState<ChapterStory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +75,10 @@ export default function CallDetailPage() {
     setLoading(true);
     setError(null);
 
-    const callRes = await callsApi.get(callId);
+    const [callRes, storiesRes] = await Promise.all([
+      callsApi.get(callId),
+      memoirApi.getStoriesBySource(callId),
+    ]);
 
     if (callRes.error) {
       setError(callRes.error);
@@ -84,6 +89,10 @@ export default function CallDetailPage() {
     if (callRes.data) {
       setCall(callRes.data.call);
       setMessages(callRes.data.messages || []);
+    }
+
+    if (storiesRes.data) {
+      setStories(storiesRes.data.stories || []);
     }
 
     setLoading(false);
@@ -141,12 +150,6 @@ export default function CallDetailPage() {
             {formatDateTime(call.started_at)}
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/chapters">
-            <BookOpen className="h-4 w-4 mr-2" />
-            View Stories
-          </Link>
-        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4 flex-shrink-0">
@@ -193,6 +196,54 @@ export default function CallDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Extracted Stories Section */}
+      {stories.length > 0 && (
+        <Card className="flex-shrink-0">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Extracted Stories
+                </CardTitle>
+                <CardDescription>
+                  {stories.length} {stories.length === 1 ? "story" : "stories"} captured from this call
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/chapters">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View All
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stories.map((story) => (
+                <div
+                  key={story.id}
+                  className="p-4 rounded-lg border bg-muted/30"
+                >
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <h4 className="font-medium">{story.title || "Untitled Story"}</h4>
+                    {story.time_period && (
+                      <Badge variant="secondary" className="text-xs shrink-0">
+                        {story.time_period}
+                      </Badge>
+                    )}
+                  </div>
+                  {story.summary && (
+                    <p className="text-sm text-muted-foreground mb-2">{story.summary}</p>
+                  )}
+                  <p className="text-sm line-clamp-3">{story.content}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="flex-shrink-0">
