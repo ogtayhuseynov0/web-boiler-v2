@@ -59,30 +59,26 @@ export class GroqLlmController {
         res.setHeader('Connection', 'keep-alive');
         res.setHeader('X-Accel-Buffering', 'no');
 
-        // Extract user_id and last user message for memory search
+        // Extract user_id for story context
         const userId = request.user_id;
-        const lastUserMessage = this.extractLastUserMessage(request.messages);
 
-        // Search memories before starting stream
-        let memories: Awaited<
-          ReturnType<typeof this.groqLlmService.searchMemoriesForQuery>
+        // Fetch stories for context
+        let stories: Awaited<
+          ReturnType<typeof this.groqLlmService.getStoriesForContext>
         > = [];
 
-        if (userId && lastUserMessage) {
+        if (userId) {
           this.logger.log(
-            `[PERF] Starting memory search for user ${userId} | query: "${lastUserMessage.substring(0, 50)}..."`,
+            `[PERF] Fetching stories for context for user ${userId}`,
           );
-          memories = await this.groqLlmService.searchMemoriesForQuery(
-            userId,
-            lastUserMessage,
-          );
+          stories = await this.groqLlmService.getStoriesForContext(userId);
         }
 
-        // Get the LLM response with memories injected
+        // Get the LLM response with stories injected
         const { stream, requestStartTime } =
-          await this.groqLlmService.createChatCompletionStreamWithMemories(
+          await this.groqLlmService.createChatCompletionStreamWithStories(
             request,
-            memories,
+            stories,
           );
 
         let firstChunkReceived = false;
@@ -92,7 +88,7 @@ export class GroqLlmController {
           if (!firstChunkReceived) {
             const ttfb = performance.now() - requestStartTime;
             this.logger.log(
-              `[PERF] Time to first byte (TTFB): ${ttfb.toFixed(2)}ms | memories: ${memories.length}`,
+              `[PERF] Time to first byte (TTFB): ${ttfb.toFixed(2)}ms | stories: ${stories.length}`,
             );
             firstChunkReceived = true;
           }
@@ -107,7 +103,7 @@ export class GroqLlmController {
 
         const totalDuration = performance.now() - requestReceivedAt;
         this.logger.log(
-          `[PERF] Stream complete | chunks: ${chunkCount} | memories: ${memories.length} | total: ${totalDuration.toFixed(2)}ms`,
+          `[PERF] Stream complete | chunks: ${chunkCount} | stories: ${stories.length} | total: ${totalDuration.toFixed(2)}ms`,
         );
       } else {
         // Handle non-streaming response

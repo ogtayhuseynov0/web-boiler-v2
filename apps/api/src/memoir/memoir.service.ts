@@ -250,6 +250,33 @@ export class MemoirService {
     return true;
   }
 
+  async reorderChapters(
+    userId: string,
+    chapters: Array<{ id: string; order: number }>,
+  ): Promise<boolean> {
+    const supabase = this.supabaseService.getClient();
+
+    try {
+      for (const chapter of chapters) {
+        const { error } = await supabase
+          .from('memoir_chapters')
+          .update({ display_order: chapter.order })
+          .eq('id', chapter.id)
+          .eq('user_id', userId);
+
+        if (error) {
+          this.logger.error('Failed to reorder chapter:', error);
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      this.logger.error('Failed to reorder chapters:', error);
+      return false;
+    }
+  }
+
   // ==================== STORIES ====================
 
   async createStory(data: CreateStoryDto): Promise<ChapterStory | null> {

@@ -109,20 +109,4 @@ export class JobsProcessor extends WorkerHost {
       throw error;
     }
   }
-
-  private async processRegenerateChapter(
-    data: RegenerateChapterJobData,
-  ): Promise<void> {
-    const { userId, chapterId } = data;
-
-    this.logger.log(`Regenerating chapter ${chapterId} for user ${userId}`);
-
-    try {
-      await this.memoirService.processChapterRegeneration(userId, chapterId);
-      this.logger.log(`Successfully regenerated chapter ${chapterId}`);
-    } catch (error) {
-      this.logger.error(`Failed to regenerate chapter ${chapterId}:`, error);
-      throw error;
-    }
-  }
 }
