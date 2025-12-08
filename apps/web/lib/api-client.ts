@@ -37,17 +37,6 @@ export interface ConversationMessage {
   created_at: string;
 }
 
-export interface Memory {
-  id: string;
-  user_id: string;
-  call_id: string | null;
-  content: string;
-  category: 'preference' | 'fact' | 'task' | 'reminder' | 'relationship' | 'other';
-  importance_score: number;
-  is_active: boolean;
-  created_at: string;
-}
-
 export interface UserBalance {
   balance_cents: number;
   total_spent_cents: number;
@@ -159,23 +148,6 @@ export const callsApi = {
     request<{ success: boolean; call_id: string; call_sid: string }>(() =>
       api.post("/calls/initiate", { phone_number })
     ),
-};
-
-// Memories API
-export const memoriesApi = {
-  list: (params?: { category?: string; search?: string; call_id?: string; limit?: number; offset?: number }) =>
-    request<{ memories: Memory[]; total: number }>(() => api.get("/memories", { params })),
-
-  search: (query: string, limit?: number) =>
-    request<{ memories: Memory[] }>(() =>
-      api.get("/memories/search", { params: { q: query, limit } })
-    ),
-
-  get: (id: string) =>
-    request<{ memory: Memory }>(() => api.get(`/memories/${id}`)),
-
-  delete: (id: string) =>
-    request<{ success: boolean }>(() => api.delete(`/memories/${id}`)),
 };
 
 // Billing API

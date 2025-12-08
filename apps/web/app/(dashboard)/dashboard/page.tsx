@@ -3,27 +3,33 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, BookOpen, MessageSquare, Brain, Mic } from "lucide-react";
-import { profileApi, Profile, memoriesApi, callsApi } from "@/lib/api-client";
+import { Loader2, BookOpen, MessageSquare, Brain, Mic, List } from "lucide-react";
+import { profileApi, Profile, memoirApi, callsApi } from "@/lib/api-client";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import Link from "next/link";
 
 export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [stats, setStats] = useState({ memories: 0, sessions: 0 });
+  const [stats, setStats] = useState({ stories: 0, chapters: 0, sessions: 0 });
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    const [profileRes, memoriesRes, callsRes] = await Promise.all([
+    const [profileRes, chaptersRes, callsRes] = await Promise.all([
       profileApi.get(),
-      memoriesApi.list({ limit: 1 }),
+      memoirApi.getChapters(),
       callsApi.list({ limit: 1 }),
     ]);
     if (profileRes.data) {
       setProfile(profileRes.data);
     }
+
+    const chapters = chaptersRes.data?.chapters || [];
+    const totalStories = chapters.reduce((sum, c) => sum + (c.stories?.length || 0), 0);
+    const chaptersWithStories = chapters.filter(c => c.stories && c.stories.length > 0).length;
+
     setStats({
-      memories: memoriesRes.data?.total || 0,
+      stories: totalStories,
+      chapters: chaptersWithStories,
       sessions: callsRes.data?.total || 0,
     });
     setLoading(false);
@@ -33,12 +39,14 @@ export default function DashboardPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleNewMemories = useCallback(() => {
-    // Refresh stats when new memories might have been created
+  const handleNewStories = useCallback(() => {
+    // Refresh stats when new stories might have been created
     setTimeout(() => {
-      memoriesApi.list({ limit: 1 }).then((res) => {
-        if (res.data) {
-          setStats((prev) => ({ ...prev, memories: res.data!.total || 0 }));
+      memoirApi.getChapters().then((res) => {
+        if (res.data?.chapters) {
+          const chapters = res.data.chapters;
+          const totalStories = chapters.reduce((sum, c) => sum + (c.stories?.length || 0), 0);
+          setStats((prev) => ({ ...prev, stories: totalStories }));
         }
       });
     }, 2000);
@@ -70,8 +78,8 @@ export default function DashboardPage() {
             <Brain className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.memories}</div>
-            <p className="text-xs text-muted-foreground">memories from your life</p>
+            <div className="text-2xl font-bold">{stats.stories}</div>
+            <p className="text-xs text-muted-foreground">across {stats.chapters} chapters</p>
           </CardContent>
         </Card>
         <Card>
@@ -90,7 +98,7 @@ export default function DashboardPage() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Building...</div>
+            <div className="text-2xl font-bold">{stats.stories > 0 ? "Growing" : "Empty"}</div>
             <p className="text-xs text-muted-foreground">keep sharing to grow it</p>
           </CardContent>
         </Card>
@@ -107,7 +115,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 min-h-0 p-0">
-              <ChatInterface onNewMemories={handleNewMemories} className="border-0 shadow-none rounded-none h-full" />
+              <ChatInterface onNewMemories={handleNewStories} className="border-0 shadow-none rounded-none h-full" />
             </CardContent>
           </Card>
         </div>
@@ -124,9 +132,9 @@ export default function DashboardPage() {
                 </Link>
               </Button>
               <Button className="w-full justify-start" variant="outline" asChild>
-                <Link href="/memories">
-                  <Brain className="mr-2 h-4 w-4" />
-                  View Stories
+                <Link href="/chapters">
+                  <List className="mr-2 h-4 w-4" />
+                  View Chapters
                 </Link>
               </Button>
               <Button className="w-full justify-start" variant="outline" asChild>
