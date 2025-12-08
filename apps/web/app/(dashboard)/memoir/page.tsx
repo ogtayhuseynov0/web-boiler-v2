@@ -157,33 +157,36 @@ export default function MemoirPage() {
     </Page>
   );
 
-  // Table of contents
-  pages.push(
-    <Page key="toc" number={1}>
-      <div className="h-full">
-        <h2 className="text-xl font-serif font-bold text-foreground mb-6 text-center">
-          Contents
-        </h2>
-        <div className="space-y-3">
-          {chapters.map((chapter) => (
-            <div
-              key={chapter.id}
-              className="flex justify-between items-center text-foreground"
-            >
-              <span className="font-serif">{chapter.title}</span>
-              <span className="text-sm text-muted-foreground">
-                {chapter.memory_count} {chapter.memory_count === 1 ? "story" : "stories"}
-              </span>
-            </div>
-          ))}
+  // Table of contents - only show chapters with content
+  const tocChapters = chapters.filter(c => c.current_content?.content || c.memory_count > 0);
+  if (tocChapters.length > 0) {
+    pages.push(
+      <Page key="toc" number={1}>
+        <div className="h-full">
+          <h2 className="text-xl font-serif font-bold text-foreground mb-6 text-center">
+            Contents
+          </h2>
+          <div className="space-y-3">
+            {tocChapters.map((chapter) => (
+              <div
+                key={chapter.id}
+                className="flex justify-between items-center text-foreground"
+              >
+                <span className="font-serif">{chapter.title}</span>
+                <span className="text-sm text-muted-foreground">
+                  {chapter.memory_count} {chapter.memory_count === 1 ? "story" : "stories"}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </Page>
-  );
+      </Page>
+    );
+  }
 
-  // Chapter pages with narratives - title and content on same page
+  // Chapter pages with narratives - only show chapters with content
   let pageNum = 2;
-  chapters.forEach((chapter) => {
+  tocChapters.forEach((chapter) => {
     if (chapter.current_content?.content) {
       const content = chapter.current_content.content.trim();
 
@@ -273,23 +276,8 @@ export default function MemoirPage() {
           </Page>
         );
       });
-    } else if (chapter.memory_count === 0) {
-      // Empty chapter - just title
-      pages.push(
-        <Page key={`${chapter.id}-empty`} number={pageNum++}>
-          <div className="h-full flex flex-col items-center justify-center text-center">
-            <h2 className="text-xl font-serif font-bold text-foreground mb-2">
-              {chapter.title}
-            </h2>
-            <div className="w-12 h-0.5 bg-primary/30 mb-4" />
-            <p className="text-muted-foreground font-serif italic">
-              This chapter awaits your stories...
-            </p>
-          </div>
-        </Page>
-      );
-    } else {
-      // Has memories but no generated content yet
+    } else if (chapter.memory_count > 0) {
+      // Has memories but no generated content yet - show prompt to regenerate
       pages.push(
         <Page key={`${chapter.id}-pending`} number={pageNum++}>
           <div className="h-full flex flex-col items-center justify-center text-center">
