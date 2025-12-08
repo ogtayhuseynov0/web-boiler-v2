@@ -18,14 +18,14 @@ import {
   User,
   Bot,
   Loader2,
-  Brain,
   DollarSign,
   ArrowUpRight,
   ArrowDownLeft,
   Calendar,
+  BookOpen,
 } from "lucide-react";
 import Link from "next/link";
-import { callsApi, memoriesApi, Call, ConversationMessage, Memory } from "@/lib/api-client";
+import { callsApi, Call, ConversationMessage } from "@/lib/api-client";
 
 function formatDuration(seconds: number): string {
   if (!seconds) return "0:00";
@@ -49,15 +49,6 @@ function formatDateTime(dateString: string): string {
   });
 }
 
-const categoryColors: Record<string, string> = {
-  preference: "bg-blue-500/10 text-blue-500",
-  fact: "bg-green-500/10 text-green-500",
-  task: "bg-orange-500/10 text-orange-500",
-  reminder: "bg-purple-500/10 text-purple-500",
-  relationship: "bg-pink-500/10 text-pink-500",
-  other: "bg-gray-500/10 text-gray-500",
-};
-
 const statusColors: Record<string, string> = {
   completed: "bg-green-500/10 text-green-500",
   "in-progress": "bg-blue-500/10 text-blue-500",
@@ -71,7 +62,6 @@ export default function CallDetailPage() {
 
   const [call, setCall] = useState<Call | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
-  const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,10 +73,7 @@ export default function CallDetailPage() {
     setLoading(true);
     setError(null);
 
-    const [callRes, memoriesRes] = await Promise.all([
-      callsApi.get(callId),
-      memoriesApi.list({ call_id: callId }),
-    ]);
+    const callRes = await callsApi.get(callId);
 
     if (callRes.error) {
       setError(callRes.error);
@@ -97,10 +84,6 @@ export default function CallDetailPage() {
     if (callRes.data) {
       setCall(callRes.data.call);
       setMessages(callRes.data.messages || []);
-    }
-
-    if (memoriesRes.data) {
-      setMemories(memoriesRes.data.memories || []);
     }
 
     setLoading(false);
@@ -158,6 +141,12 @@ export default function CallDetailPage() {
             {formatDateTime(call.started_at)}
           </p>
         </div>
+        <Button variant="outline" asChild>
+          <Link href="/chapters">
+            <BookOpen className="h-4 w-4 mr-2" />
+            View Stories
+          </Link>
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4 flex-shrink-0">
@@ -249,50 +238,6 @@ export default function CallDetailPage() {
                       <User className="h-4 w-4 text-primary-foreground" />
                     </div>
                   )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="flex-shrink-0">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            Extracted Memories
-          </CardTitle>
-          <CardDescription>
-            Information learned from this conversation
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {memories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                {call.status === "completed"
-                  ? "No important information was extracted from this call"
-                  : "Memories will be extracted after the call ends"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {memories.map((memory) => (
-                <div
-                  key={memory.id}
-                  className="flex items-start gap-3 rounded-lg border p-3"
-                >
-                  <div className="flex-1">
-                    <p className="text-sm">{memory.content}</p>
-                    <div className="mt-2">
-                      <Badge
-                        variant="secondary"
-                        className={categoryColors[memory.category] || categoryColors.other}
-                      >
-                        {memory.category}
-                      </Badge>
-                    </div>
-                  </div>
                 </div>
               ))}
             </div>
