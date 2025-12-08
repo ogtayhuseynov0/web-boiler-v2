@@ -52,7 +52,41 @@ export default function MemoirPage() {
   const [userName, setUserName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
+  const [bookSize, setBookSize] = useState({ width: 550, height: 700 });
   const bookRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate book size based on container
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const container = containerRef.current;
+        const availableHeight = container.clientHeight - 80; // Leave room for nav
+        const availableWidth = container.clientWidth;
+
+        // Book aspect ratio ~0.7 (width/height for open book is ~1.4)
+        const pageRatio = 0.7;
+
+        let height = availableHeight;
+        let width = height * pageRatio;
+
+        // If width is too large, constrain by width
+        if (width * 2 > availableWidth - 40) {
+          width = (availableWidth - 40) / 2;
+          height = width / pageRatio;
+        }
+
+        setBookSize({
+          width: Math.floor(Math.max(300, width)),
+          height: Math.floor(Math.max(400, height))
+        });
+      }
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [loading]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -234,7 +268,7 @@ export default function MemoirPage() {
       </div>
 
       {/* Book Container */}
-      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+      <div ref={containerRef} className="flex-1 flex flex-col items-center justify-center min-h-0 overflow-hidden">
         {memories.length === 0 ? (
           <Card className="p-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -245,17 +279,18 @@ export default function MemoirPage() {
           </Card>
         ) : (
           <>
-            <div className="book-container">
+            <div className="book-container flex-1 w-full flex items-center justify-center">
               {/* @ts-ignore - react-pageflip types are incomplete */}
               <HTMLFlipBook
+                key={`${bookSize.width}-${bookSize.height}`}
                 ref={bookRef}
-                width={350}
-                height={500}
+                width={bookSize.width}
+                height={bookSize.height}
                 showCover={true}
                 flippingTime={800}
                 usePortrait={false}
                 maxShadowOpacity={0.5}
-                mobileScrollSupport={false}
+                mobileScrollSupport={true}
                 onFlip={onFlip}
                 className="book-shadow"
                 style={{}}
@@ -272,7 +307,7 @@ export default function MemoirPage() {
             </div>
 
             {/* Navigation */}
-            <div className="flex items-center gap-4 mt-8">
+            <div className="flex items-center gap-4 mt-4 flex-shrink-0">
               <Button
                 variant="outline"
                 size="icon"
@@ -300,13 +335,15 @@ export default function MemoirPage() {
       <style jsx global>{`
         .book-container {
           perspective: 3000px;
+          max-height: calc(100% - 60px);
         }
         .book-shadow {
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
           border-radius: 4px;
         }
         .stf__wrapper {
-          box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 0 30px rgba(0, 0, 0, 0.25);
+          margin: 0 auto !important;
         }
         .page {
           background: linear-gradient(
@@ -327,7 +364,7 @@ export default function MemoirPage() {
           box-shadow: inset -2px 0 10px rgba(0, 0, 0, 0.2);
         }
         .stf__parent {
-          margin: 0 auto;
+          margin: 0 auto !important;
         }
       `}</style>
     </div>
