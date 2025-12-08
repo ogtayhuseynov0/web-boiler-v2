@@ -35,6 +35,7 @@ export default function MemoirPage() {
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [targetPage, setTargetPage] = useState(0);
   const [bookSize, setBookSize] = useState({ width: 550, height: 700 });
   const bookRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -109,18 +110,32 @@ export default function MemoirPage() {
 
   const handlePrevPage = () => {
     if (bookRef.current) {
+      setTargetPage(prev => Math.max(0, prev - 1));
       bookRef.current.pageFlip().flipPrev();
     }
   };
 
   const handleNextPage = () => {
     if (bookRef.current) {
+      setTargetPage(prev => prev + 1);
       bookRef.current.pageFlip().flipNext();
     }
   };
 
   const onFlip = (e: any) => {
     setCurrentPage(e.data);
+    setTargetPage(e.data);
+  };
+
+  const onChangeState = (e: any) => {
+    // Detect flip start from user interaction (click/drag on pages)
+    if (e.data === 'flipping') {
+      const pageFlip = bookRef.current?.pageFlip();
+      if (pageFlip) {
+        const destination = pageFlip.getDestination?.() ?? currentPage;
+        setTargetPage(destination);
+      }
+    }
   };
 
   // Get chapters with content
@@ -362,7 +377,7 @@ export default function MemoirPage() {
         ) : (
           <>
             <div className={`book-container flex-1 w-full flex items-center justify-center ${
-              currentPage === 0 ? 'cover-page-view' : currentPage >= pages.length - 1 ? 'back-page-view' : ''
+              targetPage === 0 ? 'cover-page-view' : targetPage >= pages.length - 1 ? 'back-page-view' : ''
             }`}>
               {/* @ts-ignore - react-pageflip types are incomplete */}
               <HTMLFlipBook
@@ -376,6 +391,7 @@ export default function MemoirPage() {
                 maxShadowOpacity={0.5}
                 mobileScrollSupport={true}
                 onFlip={onFlip}
+                onChangeState={onChangeState}
                 className="book-shadow"
                 style={{}}
                 startPage={0}
