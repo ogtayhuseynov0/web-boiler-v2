@@ -220,7 +220,7 @@ export default function CallDetailPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
               {stories.map((story) => (
                 <div
                   key={story.id}

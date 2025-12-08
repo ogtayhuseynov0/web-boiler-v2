@@ -109,6 +109,7 @@ export class CallsService {
       .from('calls')
       .select('*', { count: 'exact' })
       .eq('user_id', userId)
+      .neq('caller_phone', 'text_chat') // Exclude text chat sessions
       .order('started_at', { ascending: false })
       .range(offset, offset + limit - 1);
 

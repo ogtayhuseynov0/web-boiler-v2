@@ -139,8 +139,8 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
   }
 
   return (
-    <Card className={cn("flex flex-col h-full", className)}>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 min-h-0">
+    <Card className={cn("flex flex-col h-full pb-0", className)}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 pb-0 min-h-0">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -226,7 +226,7 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Share a memory or story..."
-            className="min-h-[44px] max-h-[120px] resize-none"
+            className="min-h-[44px] pt-2.5 max-h-[120px] resize-none"
             rows={1}
             disabled={isLoading}
           />
