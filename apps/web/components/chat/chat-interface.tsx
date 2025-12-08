@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Loader2, Send, Sparkles, User } from "lucide-react";
+import { Loader2, Send, Sparkles, User, RotateCcw } from "lucide-react";
 import { chatApi, ChatMessage, ChatSession } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +110,23 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleEndSession = async () => {
+    if (!session?.id || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      await chatApi.endSession(session.id);
+      // Reset to start a new session
+      setSession(null);
+      setMessages([]);
+      onNewMemories?.();
+    } catch (error) {
+      console.error("Failed to end session:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -226,9 +243,23 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
             )}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          Press Enter to send, Shift+Enter for new line
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-muted-foreground">
+            Press Enter to send, Shift+Enter for new line
+          </p>
+          {messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEndSession}
+              disabled={isLoading}
+              className="text-xs h-7 text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              New Session
+            </Button>
+          )}
+        </div>
       </div>
     </Card>
   );
