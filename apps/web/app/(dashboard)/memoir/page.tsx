@@ -14,7 +14,7 @@ interface PageProps {
 
 const Page = forwardRef<HTMLDivElement, PageProps>(({ children, number }, ref) => {
   return (
-    <div ref={ref} className="page bg-amber-50 dark:bg-amber-950/30 h-full w-full p-8 flex flex-col">
+    <div ref={ref} className="page h-full w-full p-8 flex flex-col">
       <div className="flex-1 overflow-hidden">{children}</div>
       {number !== undefined && (
         <div className="text-center text-sm text-muted-foreground mt-4">
@@ -144,15 +144,15 @@ export default function MemoirPage() {
   pages.push(
     <Page key="cover">
       <div className="h-full flex flex-col items-center justify-center text-center">
-        <BookOpen className="h-16 w-16 text-amber-700 dark:text-amber-500 mb-6" />
-        <h1 className="text-3xl font-serif font-bold text-amber-900 dark:text-amber-100 mb-2">
+        <BookOpen className="h-16 w-16 text-primary mb-6" />
+        <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
           {userName}&apos;s Memoir
         </h1>
-        <p className="text-amber-700 dark:text-amber-400 font-serif italic">
+        <p className="text-muted-foreground font-serif italic">
           A Collection of Life Stories
         </p>
-        <div className="mt-8 w-24 h-0.5 bg-amber-300 dark:bg-amber-700" />
-        <p className="mt-4 text-sm text-amber-600 dark:text-amber-500">
+        <div className="mt-8 w-24 h-0.5 bg-primary/30" />
+        <p className="mt-4 text-sm text-muted-foreground">
           {memories.length} memories captured
         </p>
       </div>
@@ -163,19 +163,19 @@ export default function MemoirPage() {
   pages.push(
     <Page key="toc" number={1}>
       <div className="h-full">
-        <h2 className="text-xl font-serif font-bold text-amber-900 dark:text-amber-100 mb-6 text-center">
+        <h2 className="text-xl font-serif font-bold text-foreground mb-6 text-center">
           Contents
         </h2>
         <div className="space-y-3">
           {categories.map((cat, idx) => (
             <div
               key={cat}
-              className="flex justify-between items-center text-amber-800 dark:text-amber-200"
+              className="flex justify-between items-center text-foreground"
             >
               <span className="font-serif">
                 {categoryTitles[cat] || cat}
               </span>
-              <span className="text-sm text-amber-600 dark:text-amber-500">
+              <span className="text-sm text-muted-foreground">
                 {groupedMemories[cat].length} stories
               </span>
             </div>
@@ -194,12 +194,12 @@ export default function MemoirPage() {
     pages.push(
       <Page key={`${category}-title`} number={pageNum++}>
         <div className="h-full flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-0.5 bg-amber-300 dark:bg-amber-700 mb-4" />
-          <h2 className="text-2xl font-serif font-bold text-amber-900 dark:text-amber-100">
+          <div className="w-16 h-0.5 bg-primary/30 mb-4" />
+          <h2 className="text-2xl font-serif font-bold text-foreground">
             {categoryTitles[category] || category}
           </h2>
-          <div className="w-16 h-0.5 bg-amber-300 dark:bg-amber-700 mt-4" />
-          <p className="mt-6 text-amber-600 dark:text-amber-500 text-sm">
+          <div className="w-16 h-0.5 bg-primary/30 mt-4" />
+          <p className="mt-6 text-muted-foreground text-sm">
             {categoryMemories.length} memories
           </p>
         </div>
@@ -216,12 +216,12 @@ export default function MemoirPage() {
             {pageMemories.map((memory) => (
               <div
                 key={memory.id}
-                className="pb-4 border-b border-amber-200 dark:border-amber-800 last:border-0"
+                className="pb-4 border-b border-border last:border-0"
               >
-                <p className="text-amber-900 dark:text-amber-100 font-serif leading-relaxed">
+                <p className="text-foreground font-serif leading-relaxed">
                   {memory.content}
                 </p>
-                <p className="text-xs text-amber-500 dark:text-amber-600 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {new Date(memory.created_at).toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
@@ -240,14 +240,14 @@ export default function MemoirPage() {
   pages.push(
     <Page key="end">
       <div className="h-full flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-0.5 bg-amber-300 dark:bg-amber-700 mb-6" />
-        <p className="text-amber-700 dark:text-amber-400 font-serif italic text-lg">
+        <div className="w-16 h-0.5 bg-primary/30 mb-6" />
+        <p className="text-foreground font-serif italic text-lg">
           To be continued...
         </p>
-        <p className="mt-4 text-sm text-amber-600 dark:text-amber-500">
+        <p className="mt-4 text-sm text-muted-foreground">
           Keep sharing your stories to grow your memoir
         </p>
-        <div className="w-16 h-0.5 bg-amber-300 dark:bg-amber-700 mt-6" />
+        <div className="w-16 h-0.5 bg-primary/30 mt-6" />
       </div>
     </Page>
   );
@@ -337,28 +337,34 @@ export default function MemoirPage() {
           perspective: 3000px;
         }
         .book-shadow {
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 20px 60px rgba(60, 40, 20, 0.3);
         }
         .stf__wrapper {
-          box-shadow: 0 0 30px rgba(0, 0, 0, 0.25);
+          box-shadow: 0 0 30px rgba(60, 40, 20, 0.25);
         }
         .page {
           background: linear-gradient(
             to right,
-            #fef3c7 0%,
-            #fffbeb 50%,
-            #fef3c7 100%
+            oklch(0.94 0.025 80) 0%,
+            oklch(0.97 0.015 85) 50%,
+            oklch(0.94 0.025 80) 100%
           );
-          box-shadow: inset -2px 0 10px rgba(0, 0, 0, 0.05);
+          box-shadow: inset -2px 0 10px rgba(60, 40, 20, 0.08);
         }
         .dark .page {
           background: linear-gradient(
             to right,
-            #292524 0%,
-            #1c1917 50%,
-            #292524 100%
+            oklch(0.16 0.03 55) 0%,
+            oklch(0.19 0.025 60) 50%,
+            oklch(0.16 0.03 55) 100%
           );
           box-shadow: inset -2px 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .dark .book-shadow {
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        .dark .stf__wrapper {
+          box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
         }
       `}</style>
     </div>
