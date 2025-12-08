@@ -18,6 +18,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   Phone,
   PhoneCall,
   Clock,
@@ -28,7 +34,7 @@ import {
   ChevronRight,
   MessageSquare,
 } from "lucide-react";
-import { callsApi, Call } from "@/lib/api-client";
+import { callsApi, Call, chatApi, ChatSession } from "@/lib/api-client";
 import { VoiceCall } from "@/components/voice-call";
 
 function formatDuration(seconds: number): string {
@@ -69,26 +75,37 @@ const statusColors: Record<string, string> = {
 export default function CallsPage() {
   const router = useRouter();
   const [calls, setCalls] = useState<Call[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [totalCalls, setTotalCalls] = useState(0);
+  const [totalChats, setTotalChats] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showCallDialog, setShowCallDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState("voice");
 
   useEffect(() => {
-    fetchCalls();
+    fetchData();
   }, []);
 
-  const fetchCalls = async () => {
-    const res = await callsApi.list({ limit: 20 });
-    if (res.data) {
-      setCalls(res.data.calls);
-      setTotalCalls(res.data.total);
+  const fetchData = async () => {
+    const [callsRes, chatsRes] = await Promise.all([
+      callsApi.list({ limit: 20 }),
+      chatApi.getSessions(),
+    ]);
+
+    if (callsRes.data) {
+      setCalls(callsRes.data.calls);
+      setTotalCalls(callsRes.data.total);
+    }
+    if (chatsRes.data) {
+      setChatSessions(chatsRes.data.sessions);
+      setTotalChats(chatsRes.data.total);
     }
     setLoading(false);
   };
 
   const handleCallEnd = () => {
     setShowCallDialog(false);
-    fetchCalls();
+    fetchData();
   };
 
   const totalDurationMins = Math.round(
@@ -110,17 +127,17 @@ export default function CallsPage() {
   }).length;
 
   return (
-    <div className="flex flex-col h-full gap-8">
+    <div className="flex flex-col h-full gap-6">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold">Calls</h1>
+          <h1 className="text-3xl font-bold">Sessions</h1>
           <p className="text-muted-foreground">
-            View your call history and start new conversations
+            View your conversation history
           </p>
         </div>
         <Button onClick={() => setShowCallDialog(true)} size="lg">
           <PhoneCall className="mr-2 h-4 w-4" />
-          Start Call
+          Start Voice Call
         </Button>
       </div>
 
@@ -136,11 +153,21 @@ export default function CallsPage() {
       <div className="grid gap-4 sm:grid-cols-4 flex-shrink-0">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Calls</CardTitle>
+            <CardTitle className="text-sm font-medium">Voice Calls</CardTitle>
             <Phone className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalCalls}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Chat Sessions</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalChats}</div>
             <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
@@ -151,7 +178,7 @@ export default function CallsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalDurationMins} min</div>
-            <p className="text-xs text-muted-foreground">All time</p>
+            <p className="text-xs text-muted-foreground">Voice calls</p>
           </CardContent>
         </Card>
         <Card>
@@ -161,106 +188,132 @@ export default function CallsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCost(totalSpentCents)}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <PhoneCall className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{thisMonthCalls}</div>
-            <p className="text-xs text-muted-foreground">Calls made</p>
+            <p className="text-xs text-muted-foreground">Voice calls</p>
           </CardContent>
         </Card>
       </div>
 
       <Card className="flex-1 flex flex-col min-h-0">
-        <CardHeader className="flex-shrink-0">
-          <CardTitle>Call History</CardTitle>
-          <CardDescription>
-            Your recent conversations with the AI assistant
-          </CardDescription>
+        <CardHeader className="flex-shrink-0 pb-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList>
+              <TabsTrigger value="voice" className="gap-2">
+                <Phone className="h-4 w-4" />
+                Voice Calls ({totalCalls})
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Chat Sessions ({totalChats})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden">
+        <CardContent className="flex-1 overflow-hidden pt-4">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : calls.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Phone className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium">No calls yet</h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                Start your first conversation by clicking &quot;Start Call&quot; above.
-                The AI assistant will remember what you discuss.
-              </p>
-              <Button
-                className="mt-4"
-                onClick={() => setShowCallDialog(true)}
-              >
-                <PhoneCall className="mr-2 h-4 w-4" />
-                Make Your First Call
-              </Button>
-            </div>
-          ) : (
-            <div className="divide-y h-full overflow-y-auto overflow-x-hidden">
-              {calls.map((call) => (
-                <div
-                  key={call.id}
-                  className="flex items-center gap-4 py-4 hover:bg-muted/50 -mx-4 px-4 cursor-pointer transition-colors rounded-lg"
-                  onClick={() => router.push(`/calls/${call.id}`)}
-                >
+          ) : activeTab === "voice" ? (
+            calls.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Phone className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium">No voice calls yet</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                  Start your first voice conversation by clicking &quot;Start Voice Call&quot; above.
+                </p>
+                <Button className="mt-4" onClick={() => setShowCallDialog(true)}>
+                  <PhoneCall className="mr-2 h-4 w-4" />
+                  Make Your First Call
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y h-full overflow-y-auto overflow-x-hidden">
+                {calls.map((call) => (
                   <div
-                    className={`flex-shrink-0 p-2.5 rounded-full ${
-                      call.direction === "inbound"
-                        ? "bg-blue-500/10"
-                        : "bg-green-500/10"
-                    }`}
+                    key={call.id}
+                    className="flex items-center gap-4 py-4 hover:bg-muted/50 -mx-4 px-4 cursor-pointer transition-colors rounded-lg"
+                    onClick={() => router.push(`/calls/${call.id}`)}
                   >
-                    {call.direction === "inbound" ? (
-                      <ArrowDownLeft className="h-5 w-5 text-blue-500" />
-                    ) : (
-                      <ArrowUpRight className="h-5 w-5 text-green-500" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">
-                        {call.direction === "inbound" ? "Incoming" : "Outgoing"} Call
-                      </p>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${statusColors[call.status] || ""}`}
-                      >
-                        {call.status}
-                      </Badge>
+                    <div
+                      className={`flex-shrink-0 p-2.5 rounded-full ${
+                        call.direction === "inbound" ? "bg-blue-500/10" : "bg-green-500/10"
+                      }`}
+                    >
+                      {call.direction === "inbound" ? (
+                        <ArrowDownLeft className="h-5 w-5 text-blue-500" />
+                      ) : (
+                        <ArrowUpRight className="h-5 w-5 text-green-500" />
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {formatDate(call.started_at)}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span className="font-mono">
-                        {formatDuration(call.duration_seconds || 0)}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">
+                          {call.direction === "inbound" ? "Incoming" : "Outgoing"} Call
+                        </p>
+                        <Badge variant="outline" className={`text-xs ${statusColors[call.status] || ""}`}>
+                          {call.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5">{formatDate(call.started_at)}</p>
                     </div>
-                    <div className="flex items-center gap-1.5 text-muted-foreground w-16">
-                      <DollarSign className="h-4 w-4" />
-                      <span className="font-mono">
-                        {formatCost(call.cost_cents || 0).replace("$", "")}
-                      </span>
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span className="font-mono">{formatDuration(call.duration_seconds || 0)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-muted-foreground w-16">
+                        <DollarSign className="h-4 w-4" />
+                        <span className="font-mono">{formatCost(call.cost_cents || 0).replace("$", "")}</span>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
                     </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
+          ) : (
+            chatSessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium">No chat sessions yet</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                  Start a conversation from the dashboard to share your stories via text.
+                </p>
+                <Button className="mt-4" variant="outline" onClick={() => router.push("/dashboard")}>
+                  Go to Dashboard
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y h-full overflow-y-auto overflow-x-hidden">
+                {chatSessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center gap-4 py-4 hover:bg-muted/50 -mx-4 px-4 cursor-pointer transition-colors rounded-lg"
+                    onClick={() => router.push(`/calls/${session.id}`)}
+                  >
+                    <div className="flex-shrink-0 p-2.5 rounded-full bg-purple-500/10">
+                      <MessageSquare className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Chat Session</p>
+                        <Badge variant="outline" className={`text-xs ${statusColors[session.status] || ""}`}>
+                          {session.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5">{formatDate(session.created_at)}</p>
+                    </div>
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <MessageSquare className="h-4 w-4" />
+                        <span>{session.message_count} messages</span>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </CardContent>
       </Card>

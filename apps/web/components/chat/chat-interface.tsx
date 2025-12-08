@@ -152,9 +152,9 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
             </p>
             <div className="mt-6 flex flex-wrap gap-2 justify-center">
               {[
-                "Tell me about your childhood",
-                "What's your favorite memory?",
-                "Who influenced you most?",
+                "My favorite childhood memory",
+                "The person who influenced me most",
+                "My favorite family member",
               ].map((prompt) => (
                 <Button
                   key={prompt}
