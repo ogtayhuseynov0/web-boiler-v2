@@ -224,27 +224,27 @@ export default function MemoirPage() {
             <ReactMarkdown
               components={{
                 p: ({ children }) => (
-                  <p className="text-foreground font-serif leading-snug mb-2 text-xs">
+                  <p className="text-foreground font-serif leading-relaxed mb-3 text-sm">
                     {children}
                   </p>
                 ),
                 h1: ({ children }) => (
-                  <h1 className="text-foreground font-serif font-bold text-sm mb-1.5">{children}</h1>
+                  <h1 className="text-foreground font-serif font-bold text-lg mb-2">{children}</h1>
                 ),
                 h2: ({ children }) => (
-                  <h2 className="text-foreground font-serif font-bold text-xs mb-1.5">{children}</h2>
+                  <h2 className="text-foreground font-serif font-bold text-base mb-2">{children}</h2>
                 ),
                 h3: ({ children }) => (
-                  <h3 className="text-foreground font-serif font-semibold text-xs mb-1">{children}</h3>
+                  <h3 className="text-foreground font-serif font-semibold text-sm mb-1.5">{children}</h3>
                 ),
                 ul: ({ children }) => (
-                  <ul className="text-foreground font-serif text-xs list-disc pl-3 mb-2 space-y-0.5">{children}</ul>
+                  <ul className="text-foreground font-serif text-sm list-disc pl-4 mb-3 space-y-1">{children}</ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="text-foreground font-serif text-xs list-decimal pl-3 mb-2 space-y-0.5">{children}</ol>
+                  <ol className="text-foreground font-serif text-sm list-decimal pl-4 mb-3 space-y-1">{children}</ol>
                 ),
                 li: ({ children }) => (
-                  <li className="text-foreground leading-snug">{children}</li>
+                  <li className="text-foreground leading-relaxed">{children}</li>
                 ),
                 strong: ({ children }) => (
                   <strong className="font-semibold">{children}</strong>
