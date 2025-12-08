@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, BookOpen, MessageSquare, Brain, Mic } from "lucide-react";
 import { profileApi, Profile, memoriesApi, callsApi } from "@/lib/api-client";
+import { ChatInterface } from "@/components/chat/chat-interface";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -12,23 +13,35 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ memories: 0, sessions: 0 });
   const [loading, setLoading] = useState(true);
 
+  const fetchData = useCallback(async () => {
+    const [profileRes, memoriesRes, callsRes] = await Promise.all([
+      profileApi.get(),
+      memoriesApi.list({ limit: 1 }),
+      callsApi.list({ limit: 1 }),
+    ]);
+    if (profileRes.data) {
+      setProfile(profileRes.data);
+    }
+    setStats({
+      memories: memoriesRes.data?.total || 0,
+      sessions: callsRes.data?.total || 0,
+    });
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    const fetchData = async () => {
-      const [profileRes, memoriesRes, callsRes] = await Promise.all([
-        profileApi.get(),
-        memoriesApi.list({ limit: 1 }),
-        callsApi.list({ limit: 1 }),
-      ]);
-      if (profileRes.data) {
-        setProfile(profileRes.data);
-      }
-      setStats({
-        memories: memoriesRes.data?.total || 0,
-        sessions: callsRes.data?.total || 0,
-      });
-      setLoading(false);
-    };
     fetchData();
+  }, [fetchData]);
+
+  const handleNewMemories = useCallback(() => {
+    // Refresh stats when new memories might have been created
+    setTimeout(() => {
+      memoriesApi.list({ limit: 1 }).then((res) => {
+        if (res.data) {
+          setStats((prev) => ({ ...prev, memories: res.data!.total || 0 }));
+        }
+      });
+    }, 2000);
   }, []);
 
   if (loading) {
@@ -81,34 +94,62 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Start Sharing Your Story</CardTitle>
-          <CardDescription>
-            Talk or type to capture your memories, experiences, and life moments.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground">
-            Every conversation helps build your personal memoir. Share stories about your childhood,
-            career, relationships, travels, or any moments that matter to you.
-          </p>
-          <div className="flex gap-3">
-            <Button asChild>
-              <Link href="/calls">
-                <Mic className="mr-2 h-4 w-4" />
-                Start Talking
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/memories">
-                <Brain className="mr-2 h-4 w-4" />
-                View Memories
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Share Your Story</CardTitle>
+              <CardDescription>
+                Type or talk to capture your memories, experiences, and life moments.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChatInterface onNewMemories={handleNewMemories} />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button className="w-full justify-start" variant="outline" asChild>
+                <Link href="/calls">
+                  <Mic className="mr-2 h-4 w-4" />
+                  Voice Session
+                </Link>
+              </Button>
+              <Button className="w-full justify-start" variant="outline" asChild>
+                <Link href="/memories">
+                  <Brain className="mr-2 h-4 w-4" />
+                  View Stories
+                </Link>
+              </Button>
+              <Button className="w-full justify-start" variant="outline" asChild>
+                <Link href="/memoir">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Your Memoir
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Story Prompts</CardTitle>
+              <CardDescription className="text-xs">
+                Need inspiration? Try one of these
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p className="italic">&quot;What&apos;s your earliest childhood memory?&quot;</p>
+              <p className="italic">&quot;Tell me about your grandparents.&quot;</p>
+              <p className="italic">&quot;What was your first job like?&quot;</p>
+              <p className="italic">&quot;Describe a moment that changed your life.&quot;</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

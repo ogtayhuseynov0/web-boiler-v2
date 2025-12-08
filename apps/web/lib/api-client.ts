@@ -239,6 +239,55 @@ export const healthApi = {
   check: () => request<{ status: string }>(() => api.get("/health")),
 };
 
+// Chat API (Text-based conversations)
+export interface ChatSession {
+  id: string;
+  user_id: string;
+  type: 'text';
+  status: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+export const chatApi = {
+  getOrCreateSession: () =>
+    request<{ session: ChatSession }>(() => api.post("/chat/session")),
+
+  getActiveSession: () =>
+    request<{ session: ChatSession | null; messages: ChatMessage[] }>(() =>
+      api.get("/chat/session/active")
+    ),
+
+  sendMessage: (sessionId: string, content: string) =>
+    request<{ response: string; message_id: string; session_id: string }>(() =>
+      api.post("/chat/message", { session_id: sessionId, content })
+    ),
+
+  getSessionMessages: (sessionId: string) =>
+    request<{ messages: ChatMessage[] }>(() =>
+      api.get(`/chat/session/${sessionId}/messages`)
+    ),
+
+  endSession: (sessionId: string) =>
+    request<{ success: boolean }>(() =>
+      api.post(`/chat/session/${sessionId}/end`)
+    ),
+
+  getSessions: () =>
+    request<{ sessions: ChatSession[]; total: number }>(() =>
+      api.get("/chat/sessions")
+    ),
+};
+
 // Conversation API (ElevenLabs)
 export const conversationApi = {
   getSignedUrl: () =>
