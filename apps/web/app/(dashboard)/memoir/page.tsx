@@ -16,10 +16,10 @@ interface PageProps {
 
 const Page = forwardRef<HTMLDivElement, PageProps>(({ children, number }, ref) => {
   return (
-    <div ref={ref} className="page h-full w-full p-8 flex flex-col">
-      <div className="flex-1 overflow-hidden">{children}</div>
+    <div ref={ref} className="page h-full w-full p-6 flex flex-col">
+      <div className="flex-1 overflow-hidden min-h-0">{children}</div>
       {number !== undefined && (
-        <div className="text-center text-sm text-muted-foreground mt-4">
+        <div className="text-center text-xs text-muted-foreground pt-2 flex-shrink-0">
           {number}
         </div>
       )}
@@ -213,73 +213,52 @@ export default function MemoirPage() {
       </Page>
     );
 
-    // Narrative content pages
+    // Narrative content pages - render all content on single page, only split if very long
     if (chapter.current_content?.content) {
-      const content = chapter.current_content.content;
-      // Split into chunks for pagination
-      const charsPerPage = 1200;
-      const chunks: string[] = [];
+      const content = chapter.current_content.content.trim();
 
-      // Split by double newlines but keep reasonable chunks
-      const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
-      let currentChunk = "";
-
-      paragraphs.forEach((paragraph) => {
-        if (currentChunk.length + paragraph.length > charsPerPage && currentChunk.length > 0) {
-          chunks.push(currentChunk.trim());
-          currentChunk = paragraph + "\n\n";
-        } else {
-          currentChunk += paragraph + "\n\n";
-        }
-      });
-      if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim());
-      }
-
-      // Create pages for each chunk
-      chunks.forEach((chunk, idx) => {
-        pages.push(
-          <Page key={`${chapter.id}-content-${idx}-${pageNum}`} number={pageNum++}>
-            <div className="h-full overflow-hidden memoir-content">
-              <ReactMarkdown
-                components={{
-                  p: ({ children }) => (
-                    <p className="text-foreground font-serif leading-relaxed mb-3 text-[13px]">
-                      {children}
-                    </p>
-                  ),
-                  h1: ({ children }) => (
-                    <h1 className="text-foreground font-serif font-bold text-base mb-2">{children}</h1>
-                  ),
-                  h2: ({ children }) => (
-                    <h2 className="text-foreground font-serif font-bold text-sm mb-2">{children}</h2>
-                  ),
-                  h3: ({ children }) => (
-                    <h3 className="text-foreground font-serif font-semibold text-[13px] mb-2">{children}</h3>
-                  ),
-                  ul: ({ children }) => (
-                    <ul className="text-foreground font-serif text-[13px] list-disc pl-4 mb-3 space-y-1">{children}</ul>
-                  ),
-                  ol: ({ children }) => (
-                    <ol className="text-foreground font-serif text-[13px] list-decimal pl-4 mb-3 space-y-1">{children}</ol>
-                  ),
-                  li: ({ children }) => (
-                    <li className="text-foreground leading-relaxed">{children}</li>
-                  ),
-                  strong: ({ children }) => (
-                    <strong className="font-semibold">{children}</strong>
-                  ),
-                  em: ({ children }) => (
-                    <em className="italic">{children}</em>
-                  ),
-                }}
-              >
-                {chunk}
-              </ReactMarkdown>
-            </div>
-          </Page>
-        );
-      });
+      // Single page for all content - just render it
+      pages.push(
+        <Page key={`${chapter.id}-content-${pageNum}`} number={pageNum++}>
+          <div className="h-full overflow-y-auto memoir-content">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => (
+                  <p className="text-foreground font-serif leading-snug mb-2 text-xs">
+                    {children}
+                  </p>
+                ),
+                h1: ({ children }) => (
+                  <h1 className="text-foreground font-serif font-bold text-sm mb-1.5">{children}</h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-foreground font-serif font-bold text-xs mb-1.5">{children}</h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-foreground font-serif font-semibold text-xs mb-1">{children}</h3>
+                ),
+                ul: ({ children }) => (
+                  <ul className="text-foreground font-serif text-xs list-disc pl-3 mb-2 space-y-0.5">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="text-foreground font-serif text-xs list-decimal pl-3 mb-2 space-y-0.5">{children}</ol>
+                ),
+                li: ({ children }) => (
+                  <li className="text-foreground leading-snug">{children}</li>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold">{children}</strong>
+                ),
+                em: ({ children }) => (
+                  <em className="italic">{children}</em>
+                ),
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+        </Page>
+      );
     } else if (chapter.memory_count === 0) {
       // Empty chapter placeholder
       pages.push(
