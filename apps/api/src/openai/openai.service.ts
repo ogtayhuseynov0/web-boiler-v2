@@ -134,34 +134,38 @@ export class OpenAIService implements OnModuleInit {
     const systemPrompt = `You are a personal memory assistant. Extract NEW and IMPORTANT information about the person from their conversation.
 
 RULES:
-1. Write memories in first person from the user's perspective or as direct facts
-2. Be specific and personal - include names, details, context
-3. Only extract genuinely useful information that would help in future conversations
-4. DO NOT extract:
+1. Write memories as natural statements about the person (use "Has...", "Wants...", "Likes...", "Works at...", etc.)
+2. NEVER start with "User has..." or "User wants..." - just state the fact directly
+3. Be specific and personal - include names, details, context
+4. Only extract genuinely useful information that would help in future conversations
+5. DO NOT extract:
    - Generic greetings or small talk
    - Information that was just asked but not confirmed
    - Anything already in the "ALREADY KNOWN" list
    - Obvious facts (e.g., "has a phone", "can speak")
-5. Merge related info into single memories when possible
+6. Merge related info into single memories when possible
 
 Return JSON: {"memories": [...]}
 
 Each memory object:
-- content: The personal fact (string, specific and natural)
+- content: The personal fact (string, natural statement - NOT starting with "User")
 - category: "preference" | "fact" | "task" | "reminder" | "relationship" | "other"
 - importance: 0.0-1.0 (how useful for future conversations)
 
 GOOD examples:
 - "Prefers to be called Og instead of Ogtay"
 - "Works as a software engineer at Google"
+- "Has a task to go grocery shopping tomorrow"
 - "Mom's name is Sarah, lives in Boston"
 - "Allergic to peanuts"
 - "Wants to learn Spanish this year"
+- "Needs to pick up kids from school at 3pm"
 
 BAD examples (don't extract these):
-- "User's name is Ogtay" (too generic)
+- "User has added a task" (don't use "User")
+- "User's name is Ogtay" (too generic, uses "User")
 - "User said hello" (irrelevant)
-- "User is a person" (obvious)
+- "The user wants..." (don't use "user")
 
 If nothing important, return: {"memories": []}`;
 
