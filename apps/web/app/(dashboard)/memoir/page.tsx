@@ -181,46 +181,32 @@ export default function MemoirPage() {
     </Page>
   );
 
-  // Chapter pages with narratives
+  // Chapter pages with narratives - title and content on same page
   let pageNum = 2;
   chapters.forEach((chapter) => {
-    // Chapter title page
-    pages.push(
-      <Page key={`${chapter.id}-title`} number={pageNum++}>
-        <div className="h-full flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-0.5 bg-primary/30 mb-4" />
-          <h2 className="text-2xl font-serif font-bold text-foreground">
-            {chapter.title}
-          </h2>
-          <div className="w-16 h-0.5 bg-primary/30 mt-4" />
-          {chapter.description && (
-            <p className="mt-4 text-muted-foreground text-sm italic max-w-xs">
-              {chapter.description}
-            </p>
-          )}
-          {chapter.time_period_start && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {chapter.time_period_start}
-              {chapter.time_period_end && chapter.time_period_end !== chapter.time_period_start
-                ? ` - ${chapter.time_period_end}`
-                : ""}
-            </p>
-          )}
-          <p className="mt-6 text-muted-foreground text-sm">
-            {chapter.memory_count} {chapter.memory_count === 1 ? "memory" : "memories"}
-          </p>
-        </div>
-      </Page>
-    );
-
-    // Narrative content pages - render all content on single page, only split if very long
     if (chapter.current_content?.content) {
       const content = chapter.current_content.content.trim();
 
-      // Single page for all content - just render it
+      // Chapter with content - title + content on same page
       pages.push(
         <Page key={`${chapter.id}-content-${pageNum}`} number={pageNum++}>
           <div className="h-full overflow-y-auto memoir-content">
+            {/* Chapter header */}
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-serif font-bold text-foreground">
+                {chapter.title}
+              </h2>
+              {chapter.time_period_start && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {chapter.time_period_start}
+                  {chapter.time_period_end && chapter.time_period_end !== chapter.time_period_start
+                    ? ` - ${chapter.time_period_end}`
+                    : ""}
+                </p>
+              )}
+              <div className="w-12 h-0.5 bg-primary/30 mx-auto mt-2" />
+            </div>
+            {/* Chapter content */}
             <ReactMarkdown
               components={{
                 p: ({ children }) => (
@@ -260,15 +246,16 @@ export default function MemoirPage() {
         </Page>
       );
     } else if (chapter.memory_count === 0) {
-      // Empty chapter placeholder
+      // Empty chapter - just title
       pages.push(
         <Page key={`${chapter.id}-empty`} number={pageNum++}>
           <div className="h-full flex flex-col items-center justify-center text-center">
+            <h2 className="text-xl font-serif font-bold text-foreground mb-2">
+              {chapter.title}
+            </h2>
+            <div className="w-12 h-0.5 bg-primary/30 mb-4" />
             <p className="text-muted-foreground font-serif italic">
               This chapter awaits your stories...
-            </p>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Share memories to fill these pages
             </p>
           </div>
         </Page>
@@ -278,10 +265,14 @@ export default function MemoirPage() {
       pages.push(
         <Page key={`${chapter.id}-pending`} number={pageNum++}>
           <div className="h-full flex flex-col items-center justify-center text-center">
+            <h2 className="text-xl font-serif font-bold text-foreground mb-2">
+              {chapter.title}
+            </h2>
+            <div className="w-12 h-0.5 bg-primary/30 mb-4" />
             <p className="text-muted-foreground font-serif italic">
               {chapter.memory_count} {chapter.memory_count === 1 ? "story" : "stories"} captured
             </p>
-            <p className="mt-4 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               Tap &quot;Regenerate&quot; to create this chapter&apos;s narrative
             </p>
           </div>

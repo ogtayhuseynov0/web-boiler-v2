@@ -53,15 +53,17 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
+    <div className="flex flex-col h-full gap-6">
+      {/* Header */}
+      <div className="flex-shrink-0">
         <h1 className="text-3xl font-bold">Your Memoir</h1>
         <p className="text-muted-foreground">
           Welcome back, {profile?.preferred_name || profile?.full_name || "there"}. Ready to capture more of your story?
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Stats Cards */}
+      <div className="flex-shrink-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Stories Captured</CardTitle>
@@ -94,21 +96,22 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
+      {/* Main Content - Chat fills remaining space */}
+      <div className="flex-1 min-h-0 grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 flex flex-col min-h-0">
+          <Card className="flex-1 flex flex-col min-h-0">
+            <CardHeader className="flex-shrink-0">
               <CardTitle>Share Your Story</CardTitle>
               <CardDescription>
                 Type or talk to capture your memories, experiences, and life moments.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <ChatInterface onNewMemories={handleNewMemories} />
+            <CardContent className="flex-1 min-h-0 p-0">
+              <ChatInterface onNewMemories={handleNewMemories} className="border-0 shadow-none rounded-none h-full" />
             </CardContent>
           </Card>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Quick Actions</CardTitle>

@@ -4,16 +4,16 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Send, Sparkles, User } from "lucide-react";
 import { chatApi, ChatMessage, ChatSession } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 interface ChatInterfaceProps {
   onNewMemories?: () => void;
+  className?: string;
 }
 
-export function ChatInterface({ onNewMemories }: ChatInterfaceProps) {
+export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) {
   const [session, setSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -115,15 +115,15 @@ export function ChatInterface({ onNewMemories }: ChatInterfaceProps) {
 
   if (isInitializing) {
     return (
-      <Card className="flex items-center justify-center h-[500px]">
+      <Card className={cn("flex items-center justify-center h-full", className)}>
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </Card>
     );
   }
 
   return (
-    <Card className="flex flex-col h-[500px]">
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
+    <Card className={cn("flex flex-col h-full", className)}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 min-h-0">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -199,9 +199,9 @@ export function ChatInterface({ onNewMemories }: ChatInterfaceProps) {
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
-      <div className="p-4 border-t">
+      <div className="p-4 border-t flex-shrink-0">
         <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
