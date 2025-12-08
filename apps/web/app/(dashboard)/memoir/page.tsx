@@ -343,22 +343,12 @@ export default function MemoirPage() {
           box-shadow: 0 0 30px rgba(60, 40, 20, 0.25);
         }
         .page {
-          background: linear-gradient(
-            to right,
-            oklch(0.94 0.025 80) 0%,
-            oklch(0.97 0.015 85) 50%,
-            oklch(0.94 0.025 80) 100%
-          );
-          box-shadow: inset -2px 0 10px rgba(60, 40, 20, 0.08);
+          background: oklch(0.95 0.02 75);
+          box-shadow: inset 0 0 30px rgba(60, 40, 20, 0.06);
         }
         .dark .page {
-          background: linear-gradient(
-            to right,
-            oklch(0.16 0.03 55) 0%,
-            oklch(0.19 0.025 60) 50%,
-            oklch(0.16 0.03 55) 100%
-          );
-          box-shadow: inset -2px 0 10px rgba(0, 0, 0, 0.2);
+          background: oklch(0.18 0.025 55);
+          box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.15);
         }
         .dark .book-shadow {
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
