@@ -16,7 +16,6 @@ import {
   Clock,
   Phone,
   User,
-  Bot,
   Loader2,
   DollarSign,
   ArrowUpRight,
@@ -24,6 +23,8 @@ import {
   Calendar,
   BookOpen,
   FileText,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { callsApi, Call, ConversationMessage, memoirApi, ChapterStory } from "@/lib/api-client";
@@ -57,9 +58,9 @@ const statusColors: Record<string, string> = {
   failed: "bg-red-500/10 text-red-500",
 };
 
-export default function CallDetailPage() {
+export default function SessionDetailPage() {
   const params = useParams();
-  const callId = params.id as string;
+  const sessionId = params.id as string;
 
   const [call, setCall] = useState<Call | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -67,17 +68,19 @@ export default function CallDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchCallDetails();
-  }, [callId]);
+  const isChat = call?.caller_phone === "text_chat";
 
-  const fetchCallDetails = async () => {
+  useEffect(() => {
+    fetchDetails();
+  }, [sessionId]);
+
+  const fetchDetails = async () => {
     setLoading(true);
     setError(null);
 
     const [callRes, storiesRes] = await Promise.all([
-      callsApi.get(callId),
-      memoirApi.getStoriesBySource(callId),
+      callsApi.get(sessionId),
+      memoirApi.getStoriesBySource(sessionId),
     ]);
 
     if (callRes.error) {
@@ -116,8 +119,8 @@ export default function CallDetailPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Call Not Found</h1>
-            <p className="text-muted-foreground">{error || "This call does not exist"}</p>
+            <h1 className="text-3xl font-bold">Session Not Found</h1>
+            <p className="text-muted-foreground">{error || "This session does not exist"}</p>
           </div>
         </div>
       </div>
@@ -130,6 +133,7 @@ export default function CallDetailPage() {
 
   return (
     <div className="flex flex-col h-full gap-6">
+      {/* Header */}
       <div className="flex items-center gap-4 flex-shrink-0">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/calls">
@@ -139,7 +143,7 @@ export default function CallDetailPage() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">
-              {call.direction === "inbound" ? "Incoming" : "Outgoing"} Call
+              {isChat ? "Chat Session" : `${call.direction === "inbound" ? "Incoming" : "Outgoing"} Call`}
             </h1>
             <Badge className={statusColors[call.status] || statusColors.completed}>
               {call.status}
@@ -152,50 +156,74 @@ export default function CallDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-4 flex-shrink-0">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Duration</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold font-mono">
-              {formatDuration(call.duration_seconds || 0)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Direction</CardTitle>
-            {call.direction === "inbound" ? (
-              <ArrowDownLeft className="h-4 w-4 text-blue-500" />
-            ) : (
-              <ArrowUpRight className="h-4 w-4 text-green-500" />
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold capitalize">{call.direction}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCost(call.cost_cents || 0)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Messages</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{conversationMessages.length}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats - different for chat vs call */}
+      {isChat ? (
+        <div className="grid gap-4 sm:grid-cols-2 flex-shrink-0">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Messages</CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{conversationMessages.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Stories Extracted</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stories.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-4 flex-shrink-0">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Duration</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold font-mono">
+                {formatDuration(call.duration_seconds || 0)}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Direction</CardTitle>
+              {call.direction === "inbound" ? (
+                <ArrowDownLeft className="h-4 w-4 text-blue-500" />
+              ) : (
+                <ArrowUpRight className="h-4 w-4 text-green-500" />
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold capitalize">{call.direction}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Cost</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCost(call.cost_cents || 0)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Messages</CardTitle>
+              <Phone className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{conversationMessages.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Extracted Stories Section */}
       {stories.length > 0 && (
@@ -208,7 +236,7 @@ export default function CallDetailPage() {
                   Extracted Stories
                 </CardTitle>
                 <CardDescription>
-                  {stories.length} {stories.length === 1 ? "story" : "stories"} captured from this call
+                  {stories.length} {stories.length === 1 ? "story" : "stories"} captured from this {isChat ? "chat" : "call"}
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" asChild>
@@ -245,20 +273,27 @@ export default function CallDetailPage() {
         </Card>
       )}
 
+      {/* Conversation */}
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="flex-shrink-0">
           <CardTitle>Conversation</CardTitle>
-          <CardDescription>Full transcript of the call</CardDescription>
+          <CardDescription>
+            {isChat ? "Full chat history" : "Full transcript of the call"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden">
           {conversationMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Phone className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium">No transcript available</h3>
+              {isChat ? (
+                <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              ) : (
+                <Phone className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              )}
+              <h3 className="text-lg font-medium">No messages yet</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 {call.status === "in-progress"
-                  ? "Transcript will appear once the call ends"
-                  : "No messages were recorded for this call"}
+                  ? "Messages will appear as the conversation continues"
+                  : "No messages were recorded for this session"}
               </p>
             </div>
           ) : (
@@ -272,7 +307,7 @@ export default function CallDetailPage() {
                 >
                   {message.role === "assistant" && (
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-primary" />
+                      <Sparkles className="h-4 w-4 text-primary" />
                     </div>
                   )}
                   <div
