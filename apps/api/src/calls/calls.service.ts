@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { TwilioService } from '../twilio/twilio.service';
 
@@ -39,7 +39,7 @@ export class CallsService {
 
   constructor(
     private supabaseService: SupabaseService,
-    private twilioService: TwilioService,
+    @Optional() private twilioService: TwilioService,
   ) {}
 
   async createCall(data: CreateCallDto): Promise<Call | null> {
@@ -204,6 +204,12 @@ export class CallsService {
     userId: string,
     phoneNumber: string,
   ): Promise<{ callSid: string; callId: string } | null> {
+    // Twilio is disabled for beta
+    if (!this.twilioService) {
+      this.logger.warn('Twilio service is not available - outbound calls disabled');
+      return null;
+    }
+
     const result = await this.twilioService.initiateCall(phoneNumber);
     if (!result) {
       return null;

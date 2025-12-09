@@ -104,7 +104,13 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ message?: string; error?: string }>) => {
     if (error.response?.status === 401) {
-      console.error("Unauthorized - redirecting to login");
+      // Clear session and redirect to login
+      if (typeof window !== "undefined") {
+        const supabase = createClient();
+        supabase.auth.signOut().then(() => {
+          window.location.href = "/login";
+        });
+      }
     }
     return Promise.reject(error);
   }

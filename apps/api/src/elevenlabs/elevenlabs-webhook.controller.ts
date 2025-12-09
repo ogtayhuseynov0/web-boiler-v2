@@ -232,6 +232,18 @@ export class ElevenLabsWebhookController {
     // Calculate cost (e.g., $0.10 per minute)
     const costCents = Math.ceil((duration_seconds || 0) / 60) * 10;
 
+    // Check if call already completed (prevent duplicate processing)
+    const { data: existingCall } = await supabase
+      .from('calls')
+      .select('status, cost_cents')
+      .eq('id', callId)
+      .single();
+
+    if (existingCall?.status === 'completed' && existingCall?.cost_cents > 0) {
+      this.logger.log(`Call ${callId} already completed, skipping duplicate processing`);
+      return;
+    }
+
     // Update call record
     await supabase
       .from('calls')
@@ -243,7 +255,7 @@ export class ElevenLabsWebhookController {
       })
       .eq('id', callId);
 
-    // Deduct balance
+    // Deduct balance (only if not already deducted)
     if (call.user_id && costCents > 0) {
       await supabase.rpc('deduct_balance', {
         p_user_id: call.user_id,
@@ -334,8 +346,17 @@ export class ElevenLabsWebhookController {
 
     // If this is post_call_transcription, also update call and queue memory extraction
     if (payload.type === 'post_call_transcription') {
-      // Update call with duration
-      if (durationSeconds) {
+      // Check if call already completed (prevent duplicate processing)
+      const { data: existingCall } = await supabase
+        .from('calls')
+        .select('status, cost_cents')
+        .eq('id', callId)
+        .single();
+
+      const alreadyProcessed = existingCall?.status === 'completed' && existingCall?.cost_cents > 0;
+
+      // Update call with duration (only if not already processed)
+      if (durationSeconds && !alreadyProcessed) {
         const costCents = Math.ceil(durationSeconds / 60) * 10;
         await supabase
           .from('calls')
@@ -355,9 +376,11 @@ export class ElevenLabsWebhookController {
             p_call_id: callId,
           });
         }
+      } else if (alreadyProcessed) {
+        this.logger.log(`Call ${callId} already processed, skipping billing`);
       }
 
-      // Queue story extraction
+      // Queue story extraction (always, even if billing was skipped)
       if (userId) {
         await this.queueService.addJob('extract-stories', {
           callId: callId,

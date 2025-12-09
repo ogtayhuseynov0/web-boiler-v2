@@ -9,13 +9,13 @@ import { AuthModule } from './auth/auth.module';
 import { QueueModule } from './queue/queue.module';
 import { ProfileModule } from './profile/profile.module';
 import { HealthModule } from './health/health.module';
-import { TwilioModule } from './twilio/twilio.module';
+// import { TwilioModule } from './twilio/twilio.module'; // Hidden for beta - Twilio phone calls disabled
 import { ElevenLabsModule } from './elevenlabs/elevenlabs.module';
 import { OpenAIModule } from './openai/openai.module';
 import { CallsModule } from './calls/calls.module';
 import { ConversationModule } from './conversation/conversation.module';
 import { BillingModule } from './billing/billing.module';
-import { WebhooksModule } from './webhooks/webhooks.module';
+// import { WebhooksModule } from './webhooks/webhooks.module'; // Hidden for beta - contains Twilio webhooks
 import { JobsModule } from './jobs/jobs.module';
 import { UserPhonesModule } from './user-phones/user-phones.module';
 import { GroqLlmModule } from './groq-llm/groq-llm.module';
@@ -46,13 +46,13 @@ import { MemoirModule } from './memoir/memoir.module';
     QueueModule,
     ProfileModule,
     HealthModule,
-    TwilioModule,
+    // TwilioModule, // Hidden for beta - Twilio phone calls disabled
     ElevenLabsModule,
     OpenAIModule,
     CallsModule,
     ConversationModule,
     BillingModule,
-    WebhooksModule,
+    // WebhooksModule, // Hidden for beta - contains Twilio webhooks
     JobsModule,
     UserPhonesModule,
     GroqLlmModule,

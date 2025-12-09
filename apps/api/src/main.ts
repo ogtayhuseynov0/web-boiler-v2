@@ -29,6 +29,9 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       frontendUrl || 'http://localhost:3000',
+      'https://memoir.bot',
+      'https://www.memoir.bot',
+      'https://api.memoir.bot',
       'https://elevenlabs.io',
       'https://api.elevenlabs.io',
     ],
