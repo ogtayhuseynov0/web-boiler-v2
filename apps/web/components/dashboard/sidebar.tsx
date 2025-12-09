@@ -11,7 +11,6 @@ import {
   X,
   Phone,
   Brain,
-  CreditCard,
   BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,7 +26,7 @@ const navigation = [
 ];
 
 const settingsNavigation = [
-  { name: "Billing", href: "/billing", icon: CreditCard },
+  // { name: "Billing", href: "/billing", icon: CreditCard }, // Hidden for beta - restore when payments ready
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 

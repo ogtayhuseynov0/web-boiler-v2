@@ -1,3 +1,13 @@
+import { redirect } from "next/navigation";
+
+// Billing is hidden for beta launch - redirect to dashboard
+// To restore: git checkout apps/web/app/(dashboard)/billing/page.tsx
+export default function BillingPage() {
+  redirect("/dashboard");
+}
+
+/* PRESERVED BILLING PAGE - Restore when payments are ready:
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,3 +163,5 @@ export default function BillingPage() {
     </div>
   );
 }
+
+*/

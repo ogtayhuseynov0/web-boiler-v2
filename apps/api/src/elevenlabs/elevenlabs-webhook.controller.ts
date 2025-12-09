@@ -72,16 +72,16 @@ export class ElevenLabsWebhookController {
   ) {
     this.logger.log(`Webhook received, signature present: ${!!signature}`);
 
-    // TODO: Enable signature verification in production
-    // For now, skip verification - uncomment below when ready
-    /*
+    // Verify webhook signature when secret is configured
     if (this.webhookSecret) {
       if (!this.verifySignature(req.rawBody, signature)) {
-        this.logger.warn(`Invalid webhook signature. Received: ${signature}`);
+        this.logger.warn(`Invalid webhook signature`);
         throw new UnauthorizedException('Invalid signature');
       }
+      this.logger.debug('Webhook signature verified');
+    } else {
+      this.logger.warn('ELEVENLABS_WEBHOOK_SECRET not set - skipping signature verification');
     }
-    */
 
     const convId = payload.conversation_id || payload.data?.conversation_id;
     this.logger.log(
@@ -252,13 +252,13 @@ export class ElevenLabsWebhookController {
       });
     }
 
-    // Queue memory extraction
+    // Queue story extraction
     if (call.user_id) {
-      await this.queueService.addJob('extract-memories', {
+      await this.queueService.addJob('extract-stories', {
         callId: callId,
         userId: call.user_id,
       });
-      this.logger.log(`Queued memory extraction for call ${callId}`);
+      this.logger.log(`Queued story extraction for call ${callId}`);
     }
   }
 
@@ -357,13 +357,13 @@ export class ElevenLabsWebhookController {
         }
       }
 
-      // Queue memory extraction
+      // Queue story extraction
       if (userId) {
-        await this.queueService.addJob('extract-memories', {
+        await this.queueService.addJob('extract-stories', {
           callId: callId,
           userId: userId,
         });
-        this.logger.log(`Queued memory extraction for call ${callId}`);
+        this.logger.log(`Queued story extraction for call ${callId}`);
       }
     }
   }
