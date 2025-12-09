@@ -163,31 +163,6 @@ export default function DashboardPage() {
         </div>
         <div className="space-y-4 overflow-y-auto">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button className="w-full justify-start" variant="outline" asChild>
-                <Link href="/calls">
-                  <Mic className="mr-2 h-4 w-4" />
-                  Voice Session
-                </Link>
-              </Button>
-              <Button className="w-full justify-start" variant="outline" asChild>
-                <Link href="/chapters">
-                  <List className="mr-2 h-4 w-4" />
-                  View Chapters
-                </Link>
-              </Button>
-              <Button className="w-full justify-start" variant="outline" asChild>
-                <Link href="/memoir">
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  Your Memoir
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
@@ -249,20 +224,6 @@ export default function DashboardPage() {
                     ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Story Prompts</CardTitle>
-              <CardDescription className="text-xs">
-                Need inspiration? Try one of these
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p className="italic">&quot;What&apos;s your earliest childhood memory?&quot;</p>
-              <p className="italic">&quot;Tell me about your grandparents.&quot;</p>
-              <p className="italic">&quot;What was your first job like?&quot;</p>
-              <p className="italic">&quot;Describe a moment that changed your life.&quot;</p>
             </CardContent>
           </Card>
         </div>
