@@ -114,7 +114,7 @@ export default function SessionDetailPage() {
       <div className="space-y-8">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/calls">
+            <Link href="/sessions">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -136,7 +136,7 @@ export default function SessionDetailPage() {
       {/* Header */}
       <div className="flex items-center gap-4 flex-shrink-0">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/calls">
+          <Link href="/sessions">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

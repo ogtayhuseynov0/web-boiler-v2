@@ -232,7 +232,7 @@ export default function CallsPage() {
                   <div
                     key={call.id}
                     className="flex items-center gap-4 py-4 hover:bg-muted/50 -mx-4 px-4 cursor-pointer transition-colors rounded-lg"
-                    onClick={() => router.push(`/calls/${call.id}`)}
+                    onClick={() => router.push(`/sessions/${call.id}`)}
                   >
                     <div
                       className={`flex-shrink-0 p-2.5 rounded-full ${
@@ -289,7 +289,7 @@ export default function CallsPage() {
                   <div
                     key={session.id}
                     className="flex items-center gap-4 py-4 hover:bg-muted/50 -mx-4 px-4 cursor-pointer transition-colors rounded-lg"
-                    onClick={() => router.push(`/calls/${session.id}`)}
+                    onClick={() => router.push(`/sessions/${session.id}`)}
                   >
                     <div className="flex-shrink-0 p-2.5 rounded-full bg-purple-500/10">
                       <MessageSquare className="h-5 w-5 text-purple-500" />
