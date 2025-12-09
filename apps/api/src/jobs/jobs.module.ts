@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { JobsProcessor } from './jobs.processor';
 import { CallsModule } from '../calls/calls.module';
 import { MemoirModule } from '../memoir/memoir.module';
+import { ProfileModule } from '../profile/profile.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { MemoirModule } from '../memoir/memoir.module';
     }),
     CallsModule,
     forwardRef(() => MemoirModule),
+    ProfileModule,
   ],
   providers: [JobsProcessor],
   exports: [JobsProcessor],

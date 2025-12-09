@@ -26,4 +26,24 @@ export class ProfileController {
   ) {
     return this.profileService.updateProfile(user.id, body);
   }
+
+  @Get('focus-topics')
+  @ApiOperation({ summary: 'Get story focus topics' })
+  async getFocusTopics(@CurrentUser() user: User) {
+    const topics = await this.profileService.getStoryFocusTopics(user.id);
+    return { topics };
+  }
+
+  @Patch('focus-topics')
+  @ApiOperation({ summary: 'Update story focus topics' })
+  async updateFocusTopics(
+    @CurrentUser() user: User,
+    @Body() body: { topics: string[] },
+  ) {
+    const topics = await this.profileService.updateStoryFocusTopics(
+      user.id,
+      body.topics,
+    );
+    return { topics };
+  }
 }

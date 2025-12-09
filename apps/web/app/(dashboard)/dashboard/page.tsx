@@ -3,24 +3,42 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, BookOpen, MessageSquare, Brain, Mic, List } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Loader2, BookOpen, MessageSquare, Brain, Mic, List, Plus, X, Sparkles } from "lucide-react";
 import { profileApi, Profile, memoirApi, callsApi } from "@/lib/api-client";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import Link from "next/link";
+
+const SUGGESTED_TOPICS = [
+  "Childhood memories",
+  "Family traditions",
+  "Career milestones",
+  "Travel adventures",
+  "Life lessons",
+  "Relationships",
+];
 
 export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState({ stories: 0, chapters: 0, sessions: 0 });
   const [loading, setLoading] = useState(true);
+  const [focusTopics, setFocusTopics] = useState<string[]>([]);
+  const [newTopic, setNewTopic] = useState("");
+  const [savingTopics, setSavingTopics] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const [profileRes, chaptersRes, callsRes] = await Promise.all([
+    const [profileRes, chaptersRes, callsRes, topicsRes] = await Promise.all([
       profileApi.get(),
       memoirApi.getChapters(),
       callsApi.list({ limit: 1 }),
+      profileApi.getFocusTopics(),
     ]);
     if (profileRes.data) {
       setProfile(profileRes.data);
+    }
+    if (topicsRes.data?.topics) {
+      setFocusTopics(topicsRes.data.topics);
     }
 
     const chapters = chaptersRes.data?.chapters || [];
@@ -34,6 +52,30 @@ export default function DashboardPage() {
     });
     setLoading(false);
   }, []);
+
+  const handleAddTopic = async (topic: string) => {
+    const trimmed = topic.trim();
+    if (!trimmed || focusTopics.includes(trimmed)) return;
+
+    setSavingTopics(true);
+    const newTopics = [...focusTopics, trimmed];
+    const res = await profileApi.updateFocusTopics(newTopics);
+    if (res.data?.topics) {
+      setFocusTopics(res.data.topics);
+    }
+    setNewTopic("");
+    setSavingTopics(false);
+  };
+
+  const handleRemoveTopic = async (topic: string) => {
+    setSavingTopics(true);
+    const newTopics = focusTopics.filter((t) => t !== topic);
+    const res = await profileApi.updateFocusTopics(newTopics);
+    if (res.data?.topics) {
+      setFocusTopics(res.data.topics);
+    }
+    setSavingTopics(false);
+  };
 
   useEffect(() => {
     fetchData();
@@ -143,6 +185,70 @@ export default function DashboardPage() {
                   Your Memoir
                 </Link>
               </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Story Focus
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Topics to prioritize when extracting stories
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {focusTopics.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {focusTopics.map((topic) => (
+                    <Badge key={topic} variant="secondary" className="gap-1 pr-1">
+                      {topic}
+                      <button
+                        onClick={() => handleRemoveTopic(topic)}
+                        disabled={savingTopics}
+                        className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add topic..."
+                  value={newTopic}
+                  onChange={(e) => setNewTopic(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddTopic(newTopic)}
+                  className="h-8 text-sm"
+                  disabled={savingTopics}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAddTopic(newTopic)}
+                  disabled={!newTopic.trim() || savingTopics}
+                  className="h-8 px-2"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {focusTopics.length < 3 && (
+                <div className="flex flex-wrap gap-1">
+                  {SUGGESTED_TOPICS.filter((t) => !focusTopics.includes(t))
+                    .slice(0, 4)
+                    .map((topic) => (
+                      <button
+                        key={topic}
+                        onClick={() => handleAddTopic(topic)}
+                        disabled={savingTopics}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        + {topic}
+                      </button>
+                    ))}
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card>

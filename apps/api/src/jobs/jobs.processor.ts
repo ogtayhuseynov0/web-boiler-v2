@@ -3,6 +3,7 @@ import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { CallsService } from '../calls/calls.service';
 import { MemoirService } from '../memoir/memoir.service';
+import { ProfileService } from '../profile/profile.service';
 
 export interface ExtractStoriesJobData {
   callId: string;
@@ -22,6 +23,7 @@ export class JobsProcessor extends WorkerHost {
     private callsService: CallsService,
     @Inject(forwardRef(() => MemoirService))
     private memoirService: MemoirService,
+    private profileService: ProfileService,
   ) {
     super();
   }
@@ -73,6 +75,17 @@ export class JobsProcessor extends WorkerHost {
 
       this.logger.log(`Filtered to ${conversationMessages.length} conversation messages`);
 
+      // Get user's focus topics for guided extraction
+      let focusTopics: string[] = [];
+      try {
+        focusTopics = await this.profileService.getStoryFocusTopics(userId);
+        if (focusTopics.length > 0) {
+          this.logger.log(`Using ${focusTopics.length} focus topics for extraction`);
+        }
+      } catch (err) {
+        this.logger.warn(`Could not fetch focus topics: ${err}`);
+      }
+
       // Extract and save stories
       const extractedStories =
         await this.memoirService.extractStoriesFromConversation(
@@ -80,6 +93,7 @@ export class JobsProcessor extends WorkerHost {
           conversationMessages,
           'chat',
           callId,
+          focusTopics.length > 0 ? focusTopics : undefined,
         );
 
       this.logger.log(

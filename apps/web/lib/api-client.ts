@@ -134,6 +134,12 @@ export const profileApi = {
 
   update: (data: { email?: string; full_name?: string; preferred_name?: string; avatar_url?: string }) =>
     request<Profile>(() => api.patch("/profile", data)),
+
+  getFocusTopics: () =>
+    request<{ topics: string[] }>(() => api.get("/profile/focus-topics")),
+
+  updateFocusTopics: (topics: string[]) =>
+    request<{ topics: string[] }>(() => api.patch("/profile/focus-topics", { topics })),
 };
 
 // Calls API
