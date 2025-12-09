@@ -48,8 +48,42 @@ export class QueueService {
       return true;
     }
 
-    this.logger.warn(`Job ${jobId} not found in queue`);
     return false;
+  }
+
+  /**
+   * Add a debounced job - cancels any existing job with the same ID and schedules a new one
+   * Useful for operations that should only run after a period of inactivity
+   */
+  async addDebouncedJob<T>(
+    name: string,
+    data: T,
+    options: {
+      jobId: string;
+      delayMs: number;
+      attempts?: number;
+    },
+  ): Promise<string> {
+    // Cancel existing job if it exists
+    await this.cancelJob(options.jobId);
+
+    // Add new delayed job
+    const job = await this.jobsQueue.add(name, data, {
+      jobId: options.jobId,
+      delay: options.delayMs,
+      removeOnComplete: true,
+      removeOnFail: false,
+      attempts: options.attempts ?? 3,
+      backoff: {
+        type: 'exponential',
+        delay: 5000,
+      },
+    });
+
+    this.logger.log(
+      `Scheduled debounced job ${name} (id: ${job.id}) to run in ${options.delayMs}ms`,
+    );
+    return job.id!;
   }
 
   /**

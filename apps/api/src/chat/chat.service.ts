@@ -205,6 +205,16 @@ export class ChatService {
       this.logger.error('Failed to store assistant message:', assistantMsgError);
     }
 
+    // Schedule debounced story extraction (runs 1 minute after last message)
+    await this.queueService.addDebouncedJob(
+      'extract-stories',
+      { callId: sessionId, userId },
+      {
+        jobId: `extract-stories-${sessionId}`,
+        delayMs: 60 * 1000, // 1 minute
+      },
+    );
+
     return {
       response: responseContent,
       messageId: assistantMessage?.id || userMessage.id,
@@ -261,7 +271,8 @@ export class ChatService {
       return false;
     }
 
-    // Trigger final story extraction
+    // Cancel any pending debounced job and trigger immediate story extraction
+    await this.queueService.cancelJob(`extract-stories-${sessionId}`);
     await this.queueService.addJob('extract-stories', {
       callId: sessionId,
       userId,

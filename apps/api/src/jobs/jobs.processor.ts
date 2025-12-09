@@ -4,6 +4,7 @@ import { Job } from 'bullmq';
 import { CallsService } from '../calls/calls.service';
 import { MemoirService } from '../memoir/memoir.service';
 import { ProfileService } from '../profile/profile.service';
+import { SupabaseService } from '../supabase/supabase.service';
 
 export interface ExtractStoriesJobData {
   callId: string;
@@ -24,6 +25,7 @@ export class JobsProcessor extends WorkerHost {
     @Inject(forwardRef(() => MemoirService))
     private memoirService: MemoirService,
     private profileService: ProfileService,
+    private supabaseService: SupabaseService,
   ) {
     super();
   }
@@ -51,17 +53,35 @@ export class JobsProcessor extends WorkerHost {
     data: ExtractStoriesJobData,
   ): Promise<void> {
     const { callId, userId } = data;
+    const supabase = this.supabaseService.getClient();
 
     this.logger.log(`Extracting stories from call ${callId}`);
 
     try {
       // Get conversation messages
       const messages = await this.callsService.getMessages(callId);
+      const currentMessageCount = messages.length;
 
-      this.logger.log(`Call ${callId} has ${messages.length} messages`);
+      this.logger.log(`Call ${callId} has ${currentMessageCount} messages`);
 
-      if (messages.length < 2) {
+      if (currentMessageCount < 2) {
         this.logger.log(`Call ${callId} has insufficient messages for story extraction`);
+        return;
+      }
+
+      // Check if we've already extracted for this message count (idempotency)
+      const { data: call } = await supabase
+        .from('calls')
+        .select('last_extracted_message_count')
+        .eq('id', callId)
+        .single();
+
+      const lastExtractedCount = call?.last_extracted_message_count || 0;
+
+      if (currentMessageCount <= lastExtractedCount) {
+        this.logger.log(
+          `Call ${callId}: No new messages since last extraction (${currentMessageCount} <= ${lastExtractedCount}), skipping`,
+        );
         return;
       }
 
@@ -96,8 +116,14 @@ export class JobsProcessor extends WorkerHost {
           focusTopics.length > 0 ? focusTopics : undefined,
         );
 
+      // Update last extracted message count
+      await supabase
+        .from('calls')
+        .update({ last_extracted_message_count: currentMessageCount })
+        .eq('id', callId);
+
       this.logger.log(
-        `Extracted ${extractedStories.length} stories from call ${callId}`,
+        `Extracted ${extractedStories.length} stories from call ${callId}, updated extraction count to ${currentMessageCount}`,
       );
     } catch (error) {
       this.logger.error(
