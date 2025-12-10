@@ -579,12 +579,12 @@ ${chapterList}
 
 === EXTRACTION RULES ===
 
-1. ONLY extract stories with SPECIFIC details (names, places, dates, sensory details)
-2. Each story MUST be at least 100 words with a narrative arc (beginning, middle, emotional resonance)
-3. Preserve EXACT names, dates, and places mentioned - never invent details
+1. Extract stories that mention specific people, events, or experiences
+2. Each story should be at least 50 words - expand brief mentions into fuller narratives while staying true to what was shared
+3. Preserve EXACT names, dates, and places mentioned - never invent major details but you can add connecting narrative
 4. Write in first person, past tense
 5. If the same story is told multiple times in the conversation, extract it only ONCE
-6. If no meaningful stories with specific details are found, return empty array
+6. Even brief mentions of meaningful experiences (like "my father saved his friend") should be captured
 7. Match each story to the most appropriate chapter based on life stage and theme
 
 Return ONLY valid JSON:
@@ -592,7 +592,7 @@ Return ONLY valid JSON:
   "stories": [
     {
       "title": "Brief descriptive title (5-8 words)",
-      "content": "Full narrative, minimum 100 words, 2-4 paragraphs",
+      "content": "Full narrative, minimum 50 words, 1-3 paragraphs",
       "summary": "One sentence summary",
       "time_period": "Time reference if mentioned (e.g., '1990s', 'childhood', 'age 25')",
       "chapter_slug": "matching-chapter-slug"
@@ -606,7 +606,10 @@ Return ONLY valid JSON:
         { maxTokens: 3000, temperature: 0.4 },
       );
 
+      this.logger.debug(`OpenAI extraction response: ${response?.substring(0, 500)}`);
+
       if (!response) {
+        this.logger.warn('OpenAI returned empty response for story extraction');
         return [];
       }
 
@@ -624,11 +627,13 @@ Return ONLY valid JSON:
       const parsed = JSON.parse(cleanedResponse.trim());
       const savedStories: ChapterStory[] = [];
 
+      this.logger.log(`OpenAI found ${parsed.stories?.length || 0} potential stories`);
+
       for (const extracted of parsed.stories || []) {
-        // Skip stories that are too short (less than 100 words)
+        // Skip stories that are too short (less than 50 words)
         const wordCount = extracted.content?.split(/\s+/).length || 0;
-        if (wordCount < 80) {
-          this.logger.log(`Skipping story "${extracted.title}" - only ${wordCount} words`);
+        if (wordCount < 50) {
+          this.logger.log(`Skipping story "${extracted.title}" - only ${wordCount} words (min 50)`);
           continue;
         }
 
