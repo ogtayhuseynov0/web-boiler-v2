@@ -21,6 +21,7 @@ import { UserPhonesModule } from './user-phones/user-phones.module';
 import { GroqLlmModule } from './groq-llm/groq-llm.module';
 import { ChatModule } from './chat/chat.module';
 import { MemoirModule } from './memoir/memoir.module';
+import { InvitesModule } from './invites/invites.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { MemoirModule } from './memoir/memoir.module';
     GroqLlmModule,
     ChatModule,
     MemoirModule,
+    InvitesModule,
   ],
 })
 export class AppModule {}

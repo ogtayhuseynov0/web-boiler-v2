@@ -370,6 +370,104 @@ export const memoirApi = {
     ),
 };
 
+// Invites API (Story Invites)
+export interface StoryInvite {
+  id: string;
+  user_id: string;
+  invite_code: string;
+  guest_email: string;
+  guest_name: string | null;
+  topic: string | null;
+  message: string | null;
+  status: 'pending' | 'viewed' | 'completed' | 'expired';
+  max_uses: number;
+  use_count: number;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GuestStory {
+  id: string;
+  invite_id: string;
+  user_id: string;
+  guest_email: string;
+  guest_name: string;
+  title: string | null;
+  content: string;
+  relationship: string | null;
+  chapter_id: string | null;
+  is_approved: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicInvite {
+  id: string;
+  owner_name: string;
+  guest_name: string | null;
+  topic: string | null;
+  message: string | null;
+}
+
+export const invitesApi = {
+  // User invites
+  list: () =>
+    request<{ invites: StoryInvite[] }>(() => api.get("/invites")),
+
+  create: (data: {
+    guest_email: string;
+    guest_name?: string;
+    topic?: string;
+    message?: string;
+    expires_in_days?: number;
+  }) =>
+    request<{ invite: StoryInvite; invite_url: string }>(() =>
+      api.post("/invites", data)
+    ),
+
+  get: (inviteId: string) =>
+    request<{ invite: StoryInvite; invite_url: string }>(() =>
+      api.get(`/invites/${inviteId}`)
+    ),
+
+  delete: (inviteId: string) =>
+    request<{ success: boolean }>(() => api.delete(`/invites/${inviteId}`)),
+
+  // Guest stories
+  getPendingStories: () =>
+    request<{ stories: GuestStory[] }>(() => api.get("/invites/stories/pending")),
+
+  getAllGuestStories: () =>
+    request<{ stories: GuestStory[] }>(() => api.get("/invites/stories/all")),
+
+  approveStory: (storyId: string, chapterId?: string) =>
+    request<{ story: GuestStory }>(() =>
+      api.put(`/invites/stories/${storyId}/approve`, { chapter_id: chapterId })
+    ),
+
+  rejectStory: (storyId: string) =>
+    request<{ success: boolean }>(() =>
+      api.put(`/invites/stories/${storyId}/reject`)
+    ),
+
+  // Public (no auth required)
+  getPublicInvite: (code: string) =>
+    request<{ invite: PublicInvite }>(() => api.get(`/invites/public/${code}`)),
+
+  submitStory: (code: string, data: {
+    guest_name: string;
+    guest_email: string;
+    title?: string;
+    content: string;
+    relationship?: string;
+  }) =>
+    request<{ success: boolean; message: string }>(() =>
+      api.post(`/invites/public/${code}/submit`, data)
+    ),
+};
+
 // Conversation API (ElevenLabs)
 export const conversationApi = {
   getSignedUrl: () =>
