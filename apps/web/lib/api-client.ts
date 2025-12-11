@@ -397,10 +397,26 @@ export interface GuestStory {
   content: string;
   relationship: string | null;
   chapter_id: string | null;
+  memoir_story_id: string | null;
   is_approved: boolean;
   is_active: boolean;
+  version: number;
+  last_approved_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface GuestInviteWithStory {
+  invite: PublicInvite & { guest_email: string };
+  story: {
+    id: string;
+    guest_name: string;
+    title: string | null;
+    content: string;
+    relationship: string | null;
+    is_approved: boolean;
+    version: number;
+  } | null;
 }
 
 export interface PublicInvite {
@@ -465,6 +481,20 @@ export const invitesApi = {
   }) =>
     request<{ success: boolean; message: string }>(() =>
       api.post(`/invites/public/${code}/submit`, data)
+    ),
+
+  // Authenticated guest (requires login with matching email)
+  getGuestInvite: (code: string) =>
+    request<GuestInviteWithStory>(() => api.get(`/invites/guest/${code}`)),
+
+  updateGuestStory: (code: string, data: {
+    guest_name: string;
+    title?: string;
+    content: string;
+    relationship?: string;
+  }) =>
+    request<{ success: boolean; story: GuestStory; message: string }>(() =>
+      api.put(`/invites/guest/${code}`, data)
     ),
 };
 

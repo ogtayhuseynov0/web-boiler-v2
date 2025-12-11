@@ -30,8 +30,11 @@ export interface GuestStory {
   content: string;
   relationship: string | null;
   chapter_id: string | null;
+  memoir_story_id: string | null;
   is_approved: boolean;
   is_active: boolean;
+  version: number;
+  last_approved_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -266,6 +269,92 @@ export class InvitesService {
     return story;
   }
 
+  // ==================== AUTHENTICATED GUEST METHODS ====================
+
+  async getGuestStoryByInvite(
+    inviteCode: string,
+    guestEmail: string,
+  ): Promise<{ story: GuestStory | null; invite: InviteWithOwner | null }> {
+    const supabase = this.supabaseService.getClient();
+
+    // Get the invite
+    const invite = await this.getInviteByCode(inviteCode);
+    if (!invite) {
+      return { story: null, invite: null };
+    }
+
+    // Verify email matches (case-insensitive)
+    if (invite.guest_email.toLowerCase() !== guestEmail.toLowerCase()) {
+      this.logger.warn(`Email mismatch for invite ${inviteCode}: expected ${invite.guest_email}, got ${guestEmail}`);
+      return { story: null, invite: null };
+    }
+
+    // Get existing story if any
+    const { data: story } = await supabase
+      .from('guest_stories')
+      .select('*')
+      .eq('invite_id', invite.id)
+      .eq('is_active', true)
+      .single();
+
+    return { story: story || null, invite };
+  }
+
+  async updateGuestStory(
+    inviteCode: string,
+    guestEmail: string,
+    data: {
+      guestName: string;
+      title?: string;
+      content: string;
+      relationship?: string;
+    },
+  ): Promise<GuestStory | null> {
+    const supabase = this.supabaseService.getClient();
+
+    // Verify invite and get existing story
+    const { story: existingStory, invite } = await this.getGuestStoryByInvite(inviteCode, guestEmail);
+
+    if (!invite) {
+      this.logger.error('Invalid invite or email mismatch');
+      return null;
+    }
+
+    if (!existingStory) {
+      // No existing story, create new one
+      return this.submitGuestStory(inviteCode, {
+        guestName: data.guestName,
+        guestEmail,
+        title: data.title,
+        content: data.content,
+        relationship: data.relationship,
+      });
+    }
+
+    // Update existing story and mark as needing re-approval
+    const { data: updatedStory, error } = await supabase
+      .from('guest_stories')
+      .update({
+        guest_name: data.guestName.trim(),
+        title: data.title?.trim() || null,
+        content: data.content.trim(),
+        relationship: data.relationship?.trim() || null,
+        is_approved: false, // Requires re-approval
+        version: existingStory.version + 1,
+      })
+      .eq('id', existingStory.id)
+      .select()
+      .single();
+
+    if (error) {
+      this.logger.error('Failed to update guest story:', error);
+      return null;
+    }
+
+    this.logger.log(`Guest story updated: ${updatedStory.id} (v${updatedStory.version}) - awaiting re-approval`);
+    return updatedStory;
+  }
+
   async getGuestStories(userId: string): Promise<GuestStory[]> {
     const supabase = this.supabaseService.getClient();
 
@@ -323,33 +412,58 @@ export class InvitesService {
       return null;
     }
 
-    // Create the story in chapter_stories (the actual memoir)
-    const memoirStory = await this.memoirService.createStory({
-      userId,
-      chapterId: chapterId || undefined,
-      title: guestStory.title || `Story from ${guestStory.guest_name}`,
-      content: guestStory.content,
-      summary: guestStory.relationship
-        ? `Shared by ${guestStory.guest_name} (${guestStory.relationship})`
-        : `Shared by ${guestStory.guest_name}`,
-      sourceType: 'guest',
-      sourceId: `guest:${storyId}`,
-    });
+    let memoirStoryId = guestStory.memoir_story_id;
 
-    if (!memoirStory) {
-      this.logger.error('Failed to create memoir story from guest story');
-      return null;
+    // Check if this is an edit (has existing memoir_story_id) or new submission
+    if (memoirStoryId) {
+      // Update existing memoir story
+      const updatedStory = await this.memoirService.updateStory(userId, memoirStoryId, {
+        title: guestStory.title || `Story from ${guestStory.guest_name}`,
+        content: guestStory.content,
+        summary: guestStory.relationship
+          ? `Shared by ${guestStory.guest_name} (${guestStory.relationship})`
+          : `Shared by ${guestStory.guest_name}`,
+        chapterId: chapterId || undefined,
+      });
+
+      if (!updatedStory) {
+        this.logger.error('Failed to update memoir story from guest story edit');
+        return null;
+      }
+
+      this.logger.log(`Guest story ${storyId} edit approved - memoir story ${memoirStoryId} updated`);
+    } else {
+      // Create new memoir story
+      const memoirStory = await this.memoirService.createStory({
+        userId,
+        chapterId: chapterId || undefined,
+        title: guestStory.title || `Story from ${guestStory.guest_name}`,
+        content: guestStory.content,
+        summary: guestStory.relationship
+          ? `Shared by ${guestStory.guest_name} (${guestStory.relationship})`
+          : `Shared by ${guestStory.guest_name}`,
+        sourceType: 'guest',
+        sourceId: `guest:${storyId}`,
+      });
+
+      if (!memoirStory) {
+        this.logger.error('Failed to create memoir story from guest story');
+        return null;
+      }
+
+      memoirStoryId = memoirStory.id;
+      this.logger.log(`Guest story ${storyId} approved - new memoir story ${memoirStoryId} created`);
     }
 
-    // Mark guest story as approved
-    const updateData: Record<string, unknown> = {
-      is_approved: true,
-      chapter_id: memoirStory.chapter_id,
-    };
-
+    // Mark guest story as approved and link to memoir story
     const { data: story, error } = await supabase
       .from('guest_stories')
-      .update(updateData)
+      .update({
+        is_approved: true,
+        memoir_story_id: memoirStoryId,
+        chapter_id: chapterId || guestStory.chapter_id,
+        last_approved_at: new Date().toISOString(),
+      })
       .eq('id', storyId)
       .eq('user_id', userId)
       .select()
@@ -360,7 +474,6 @@ export class InvitesService {
       return null;
     }
 
-    this.logger.log(`Guest story ${storyId} approved and added to memoir as ${memoirStory.id}`);
     return story;
   }
 

@@ -195,6 +195,120 @@ export class InvitesController {
     }
   }
 
+  // ==================== AUTHENTICATED GUEST ROUTES ====================
+
+  @Get('guest/:code')
+  @UseGuards(SupabaseAuthGuard)
+  async getGuestInvite(
+    @CurrentUser() user: User,
+    @Param('code') inviteCode: string,
+  ) {
+    try {
+      const { story, invite } = await this.invitesService.getGuestStoryByInvite(
+        inviteCode,
+        user.email || '',
+      );
+
+      if (!invite) {
+        throw new HttpException(
+          'Invite not found or email mismatch',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return {
+        invite: {
+          id: invite.id,
+          owner_name: invite.owner_name,
+          guest_name: invite.guest_name,
+          guest_email: invite.guest_email,
+          topic: invite.topic,
+          message: invite.message,
+        },
+        story: story
+          ? {
+              id: story.id,
+              guest_name: story.guest_name,
+              title: story.title,
+              content: story.content,
+              relationship: story.relationship,
+              is_approved: story.is_approved,
+              version: story.version,
+            }
+          : null,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to fetch invite',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Put('guest/:code')
+  @UseGuards(SupabaseAuthGuard)
+  async updateGuestStory(
+    @CurrentUser() user: User,
+    @Param('code') inviteCode: string,
+    @Body()
+    body: {
+      guest_name: string;
+      title?: string;
+      content: string;
+      relationship?: string;
+    },
+  ) {
+    if (!body.guest_name?.trim()) {
+      throw new HttpException('Your name is required', HttpStatus.BAD_REQUEST);
+    }
+
+    if (!body.content?.trim()) {
+      throw new HttpException('Story content is required', HttpStatus.BAD_REQUEST);
+    }
+
+    if (body.content.trim().length < 50) {
+      throw new HttpException(
+        'Story must be at least 50 characters',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const story = await this.invitesService.updateGuestStory(
+        inviteCode,
+        user.email || '',
+        {
+          guestName: body.guest_name,
+          title: body.title,
+          content: body.content,
+          relationship: body.relationship,
+        },
+      );
+
+      if (!story) {
+        throw new HttpException(
+          'Invite not found or email mismatch',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return {
+        success: true,
+        story,
+        message: story.version > 1
+          ? 'Your story has been updated and is pending re-approval'
+          : 'Your story has been submitted for review',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to save story',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   // ==================== PUBLIC ROUTES (NO AUTH) ====================
 
   @Get('public/:code')
