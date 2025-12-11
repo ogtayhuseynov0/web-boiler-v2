@@ -328,7 +328,7 @@ Format your response as JSON:
       .insert({
         invite_id: inviteId,
         user_id: userId,
-        guest_email: guestEmail,
+        guest_email: guestEmail.toLowerCase(),
         guest_name: guestName,
         title: extracted.title,
         content: extracted.content,

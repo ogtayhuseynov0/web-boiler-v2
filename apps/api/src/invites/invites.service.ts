@@ -526,19 +526,12 @@ export class InvitesService {
   > {
     const supabase = this.supabaseService.getClient();
 
+    this.logger.log(`Fetching submissions for email: ${guestEmail}`);
+
     // Get all guest stories for this email
     const { data: stories, error } = await supabase
       .from('guest_stories')
-      .select(
-        `
-        *,
-        story_invites!inner (
-          invite_code,
-          topic,
-          user_id
-        )
-      `,
-      )
+      .select('*')
       .eq('guest_email', guestEmail.toLowerCase())
       .eq('is_active', true)
       .order('created_at', { ascending: false });
@@ -548,12 +541,23 @@ export class InvitesService {
       return [];
     }
 
+    this.logger.log(`Found ${stories?.length || 0} submissions`);
+
     if (!stories || stories.length === 0) {
       return [];
     }
 
+    // Get invite details for all stories
+    const inviteIds = [...new Set(stories.map((s) => s.invite_id))];
+    const { data: invites } = await supabase
+      .from('story_invites')
+      .select('id, invite_code, topic, user_id')
+      .in('id', inviteIds);
+
+    const inviteMap = new Map((invites || []).map((i) => [i.id, i]));
+
     // Get owner names for all unique user_ids
-    const userIds = [...new Set(stories.map((s) => s.story_invites.user_id))];
+    const userIds = [...new Set((invites || []).map((i) => i.user_id))];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, full_name, preferred_name')
@@ -566,15 +570,17 @@ export class InvitesService {
       ]),
     );
 
-    return stories.map((story) => ({
-      ...story,
-      invite: {
-        invite_code: story.story_invites.invite_code,
-        owner_name: profileMap.get(story.story_invites.user_id) || 'Someone',
-        topic: story.story_invites.topic,
-      },
-      story_invites: undefined, // Remove the raw join data
-    }));
+    return stories.map((story) => {
+      const invite = inviteMap.get(story.invite_id);
+      return {
+        ...story,
+        invite: {
+          invite_code: invite?.invite_code || '',
+          owner_name: invite ? profileMap.get(invite.user_id) || 'Someone' : 'Someone',
+          topic: invite?.topic || null,
+        },
+      };
+    });
   }
 
   async getMySubmissionById(
@@ -594,16 +600,7 @@ export class InvitesService {
 
     const { data: story, error } = await supabase
       .from('guest_stories')
-      .select(
-        `
-        *,
-        story_invites!inner (
-          invite_code,
-          topic,
-          user_id
-        )
-      `,
-      )
+      .select('*')
       .eq('id', storyId)
       .eq('guest_email', guestEmail.toLowerCase())
       .eq('is_active', true)
@@ -613,21 +610,27 @@ export class InvitesService {
       return null;
     }
 
+    // Get invite details
+    const { data: invite } = await supabase
+      .from('story_invites')
+      .select('invite_code, topic, user_id')
+      .eq('id', story.invite_id)
+      .single();
+
     // Get owner profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, preferred_name')
-      .eq('id', story.story_invites.user_id)
+      .eq('id', invite?.user_id)
       .single();
 
     return {
       ...story,
       invite: {
-        invite_code: story.story_invites.invite_code,
+        invite_code: invite?.invite_code || '',
         owner_name: profile?.preferred_name || profile?.full_name || 'Someone',
-        topic: story.story_invites.topic,
+        topic: invite?.topic || null,
       },
-      story_invites: undefined,
     };
   }
 
