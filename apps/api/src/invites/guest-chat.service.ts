@@ -142,16 +142,21 @@ Remember: You're collecting stories ABOUT ${ownerName}, not from them. ${guestNa
   ): Promise<{ response: string; messageId: string } | null> {
     const supabase = this.supabaseService.getClient();
 
-    // Verify session
-    const { data: session } = await supabase
+    // Verify session exists
+    const { data: session, error: sessionError } = await supabase
       .from('guest_chat_sessions')
-      .select('*, story_invites!inner(*, profiles!story_invites_user_id_fkey(full_name, preferred_name))')
+      .select('*')
       .eq('id', sessionId)
-      .eq('guest_email', guestEmail)
       .single();
 
-    if (!session) {
-      this.logger.error('Session not found or access denied');
+    if (sessionError || !session) {
+      this.logger.error('Session not found:', sessionError);
+      return null;
+    }
+
+    // Verify email matches
+    if (session.guest_email !== guestEmail) {
+      this.logger.error(`Email mismatch: ${session.guest_email} vs ${guestEmail}`);
       return null;
     }
 
