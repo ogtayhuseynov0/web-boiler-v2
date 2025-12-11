@@ -153,7 +153,7 @@ export class InvitesService {
 
     const { data: invite, error } = await supabase
       .from('story_invites')
-      .select('*, profiles!story_invites_user_id_fkey(full_name, preferred_name)')
+      .select('*')
       .eq('invite_code', inviteCode)
       .single();
 
@@ -171,12 +171,16 @@ export class InvitesService {
       return null;
     }
 
-    const profile = invite.profiles as { full_name?: string; preferred_name?: string } | null;
+    // Get owner profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, preferred_name')
+      .eq('id', invite.user_id)
+      .single();
 
     return {
       ...invite,
       owner_name: profile?.preferred_name || profile?.full_name || 'Someone',
-      profiles: undefined,
     };
   }
 
