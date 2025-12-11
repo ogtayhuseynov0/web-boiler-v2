@@ -250,7 +250,8 @@ export default function ContributePage() {
                   onClick={async () => {
                     const supabase = createClient();
                     await supabase.auth.signOut();
-                    router.refresh();
+                    setUser(null);
+                    setEmailMismatch(false);
                   }}
                 >
                   Sign Out & Use Different Account
