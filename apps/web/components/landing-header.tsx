@@ -40,10 +40,23 @@ export function LandingHeader() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <BookOpen className="h-6 w-6 text-primary" />
-          <span className="text-xl font-bold">Memoir</span>
-        </Link>
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-primary" />
+            <span className="text-xl font-bold">Memoir</span>
+          </Link>
+          <nav className="hidden md:flex items-center gap-6">
+            <Link href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              How It Works
+            </Link>
+            <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Features
+            </Link>
+            <Link href="/memoirs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Public Memoirs
+            </Link>
+          </nav>
+        </div>
         <div className="flex items-center gap-4">
           {loading ? (
             <div className="w-20 h-9 bg-muted animate-pulse rounded-md" />
