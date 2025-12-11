@@ -93,6 +93,104 @@ export class InvitesController {
     }
   }
 
+  // ==================== MY SUBMISSIONS (GUEST VIEW) ====================
+  // NOTE: These routes MUST be before @Get(':id') to avoid route conflicts
+
+  @Get('my-submissions')
+  @UseGuards(SupabaseAuthGuard)
+  async getMySubmissions(@CurrentUser() user: User) {
+    try {
+      const submissions = await this.invitesService.getMySubmissions(
+        user.email || '',
+      );
+      return { submissions };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to fetch submissions',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('my-submissions/:id')
+  @UseGuards(SupabaseAuthGuard)
+  async getMySubmissionById(
+    @CurrentUser() user: User,
+    @Param('id') storyId: string,
+  ) {
+    try {
+      const submission = await this.invitesService.getMySubmissionById(
+        user.email || '',
+        storyId,
+      );
+
+      if (!submission) {
+        throw new HttpException('Submission not found', HttpStatus.NOT_FOUND);
+      }
+
+      return { submission };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to fetch submission',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Put('my-submissions/:id')
+  @UseGuards(SupabaseAuthGuard)
+  async updateMySubmission(
+    @CurrentUser() user: User,
+    @Param('id') storyId: string,
+    @Body()
+    body: {
+      guest_name?: string;
+      title?: string;
+      content?: string;
+      relationship?: string;
+    },
+  ) {
+    // Validate content if provided
+    if (body.content !== undefined && body.content.trim().length < 50) {
+      throw new HttpException(
+        'Story must be at least 50 characters',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const submission = await this.invitesService.updateMySubmission(
+        user.email || '',
+        storyId,
+        {
+          guestName: body.guest_name,
+          title: body.title,
+          content: body.content,
+          relationship: body.relationship,
+        },
+      );
+
+      if (!submission) {
+        throw new HttpException('Submission not found', HttpStatus.NOT_FOUND);
+      }
+
+      return {
+        success: true,
+        submission,
+        message: 'Your story has been updated and is pending re-approval',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to update submission',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // ==================== SINGLE INVITE ROUTES ====================
+
   @Get(':id')
   @UseGuards(SupabaseAuthGuard)
   async getInvite(@CurrentUser() user: User, @Param('id') inviteId: string) {
@@ -196,101 +294,6 @@ export class InvitesController {
     } catch (error) {
       throw new HttpException(
         'Failed to reject story',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  // ==================== MY SUBMISSIONS (GUEST VIEW) ====================
-
-  @Get('my-submissions')
-  @UseGuards(SupabaseAuthGuard)
-  async getMySubmissions(@CurrentUser() user: User) {
-    try {
-      const submissions = await this.invitesService.getMySubmissions(
-        user.email || '',
-      );
-      return { submissions };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to fetch submissions',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Get('my-submissions/:id')
-  @UseGuards(SupabaseAuthGuard)
-  async getMySubmissionById(
-    @CurrentUser() user: User,
-    @Param('id') storyId: string,
-  ) {
-    try {
-      const submission = await this.invitesService.getMySubmissionById(
-        user.email || '',
-        storyId,
-      );
-
-      if (!submission) {
-        throw new HttpException('Submission not found', HttpStatus.NOT_FOUND);
-      }
-
-      return { submission };
-    } catch (error) {
-      if (error instanceof HttpException) throw error;
-      throw new HttpException(
-        'Failed to fetch submission',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Put('my-submissions/:id')
-  @UseGuards(SupabaseAuthGuard)
-  async updateMySubmission(
-    @CurrentUser() user: User,
-    @Param('id') storyId: string,
-    @Body()
-    body: {
-      guest_name?: string;
-      title?: string;
-      content?: string;
-      relationship?: string;
-    },
-  ) {
-    // Validate content if provided
-    if (body.content !== undefined && body.content.trim().length < 50) {
-      throw new HttpException(
-        'Story must be at least 50 characters',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    try {
-      const submission = await this.invitesService.updateMySubmission(
-        user.email || '',
-        storyId,
-        {
-          guestName: body.guest_name,
-          title: body.title,
-          content: body.content,
-          relationship: body.relationship,
-        },
-      );
-
-      if (!submission) {
-        throw new HttpException('Submission not found', HttpStatus.NOT_FOUND);
-      }
-
-      return {
-        success: true,
-        submission,
-        message: 'Your story has been updated and is pending re-approval',
-      };
-    } catch (error) {
-      if (error instanceof HttpException) throw error;
-      throw new HttpException(
-        'Failed to update submission',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
