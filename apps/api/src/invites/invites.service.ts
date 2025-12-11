@@ -277,15 +277,20 @@ export class InvitesService {
   ): Promise<{ story: GuestStory | null; invite: InviteWithOwner | null }> {
     const supabase = this.supabaseService.getClient();
 
-    // Get the invite
-    const invite = await this.getInviteByCode(inviteCode);
-    if (!invite) {
+    // Get the invite directly (not using getInviteByCode which checks use limits)
+    const { data: inviteData, error: inviteError } = await supabase
+      .from('story_invites')
+      .select('*')
+      .eq('invite_code', inviteCode)
+      .single();
+
+    if (inviteError || !inviteData) {
       return { story: null, invite: null };
     }
 
     // Verify email matches (case-insensitive)
-    if (invite.guest_email.toLowerCase() !== guestEmail.toLowerCase()) {
-      this.logger.warn(`Email mismatch for invite ${inviteCode}: expected ${invite.guest_email}, got ${guestEmail}`);
+    if (inviteData.guest_email.toLowerCase() !== guestEmail.toLowerCase()) {
+      this.logger.warn(`Email mismatch for invite ${inviteCode}: expected ${inviteData.guest_email}, got ${guestEmail}`);
       return { story: null, invite: null };
     }
 
@@ -293,9 +298,21 @@ export class InvitesService {
     const { data: story } = await supabase
       .from('guest_stories')
       .select('*')
-      .eq('invite_id', invite.id)
+      .eq('invite_id', inviteData.id)
       .eq('is_active', true)
       .single();
+
+    // Get owner profile for display
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, preferred_name')
+      .eq('id', inviteData.user_id)
+      .single();
+
+    const invite: InviteWithOwner = {
+      ...inviteData,
+      owner_name: profile?.preferred_name || profile?.full_name || 'Someone',
+    };
 
     return { story: story || null, invite };
   }

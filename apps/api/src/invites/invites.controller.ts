@@ -13,11 +13,17 @@ import {
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { InvitesService } from './invites.service';
+import { GuestChatService } from './guest-chat.service';
+import { ElevenLabsService } from '../elevenlabs/elevenlabs.service';
 import type { User } from '@supabase/supabase-js';
 
 @Controller('invites')
 export class InvitesController {
-  constructor(private invitesService: InvitesService) {}
+  constructor(
+    private invitesService: InvitesService,
+    private guestChatService: GuestChatService,
+    private elevenlabsService: ElevenLabsService,
+  ) {}
 
   // ==================== AUTHENTICATED USER ROUTES ====================
 
@@ -304,6 +310,303 @@ export class InvitesController {
       if (error instanceof HttpException) throw error;
       throw new HttpException(
         'Failed to save story',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // ==================== GUEST CHAT ROUTES ====================
+
+  @Post('guest/:code/chat/session')
+  @UseGuards(SupabaseAuthGuard)
+  async getOrCreateChatSession(
+    @CurrentUser() user: User,
+    @Param('code') inviteCode: string,
+  ) {
+    try {
+      // Verify invite and email match
+      const { invite } = await this.invitesService.getGuestStoryByInvite(
+        inviteCode,
+        user.email || '',
+      );
+
+      if (!invite) {
+        throw new HttpException(
+          'Invite not found or email mismatch',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const session = await this.guestChatService.getOrCreateSession(
+        invite.id,
+        user.email || '',
+      );
+
+      if (!session) {
+        throw new HttpException(
+          'Failed to create chat session',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      // Get existing messages
+      const messages = await this.guestChatService.getSessionMessages(session.id);
+
+      return { session, messages };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to create chat session',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('guest/:code/chat/message')
+  @UseGuards(SupabaseAuthGuard)
+  async sendChatMessage(
+    @CurrentUser() user: User,
+    @Param('code') inviteCode: string,
+    @Body() body: { session_id: string; content: string },
+  ) {
+    if (!body.content?.trim()) {
+      throw new HttpException('Message content is required', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      // Verify invite and email match
+      const { invite } = await this.invitesService.getGuestStoryByInvite(
+        inviteCode,
+        user.email || '',
+      );
+
+      if (!invite) {
+        throw new HttpException(
+          'Invite not found or email mismatch',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const result = await this.guestChatService.sendMessage(
+        body.session_id,
+        user.email || '',
+        body.content.trim(),
+        invite.id,
+      );
+
+      if (!result) {
+        throw new HttpException(
+          'Failed to send message',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to send message',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('guest/:code/chat/end')
+  @UseGuards(SupabaseAuthGuard)
+  async endChatAndSaveStory(
+    @CurrentUser() user: User,
+    @Param('code') inviteCode: string,
+    @Body() body: { session_id: string; guest_name: string },
+  ) {
+    try {
+      // Verify invite and email match
+      const { invite } = await this.invitesService.getGuestStoryByInvite(
+        inviteCode,
+        user.email || '',
+      );
+
+      if (!invite) {
+        throw new HttpException(
+          'Invite not found or email mismatch',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const result = await this.guestChatService.endSessionAndSaveStory(
+        body.session_id,
+        invite.id,
+        invite.user_id,
+        user.email || '',
+        body.guest_name || invite.guest_name || 'Guest',
+      );
+
+      if (!result.success) {
+        throw new HttpException(
+          'Failed to save story from conversation',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return {
+        success: true,
+        story_id: result.storyId,
+        message: 'Your story has been saved and is pending approval',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to end chat session',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // ==================== GUEST VOICE ROUTES ====================
+
+  @Post('guest/:code/voice/start')
+  @UseGuards(SupabaseAuthGuard)
+  async startGuestVoiceSession(
+    @CurrentUser() user: User,
+    @Param('code') inviteCode: string,
+  ) {
+    try {
+      // Verify invite and email match
+      const { invite } = await this.invitesService.getGuestStoryByInvite(
+        inviteCode,
+        user.email || '',
+      );
+
+      if (!invite) {
+        throw new HttpException(
+          'Invite not found or email mismatch',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Get ElevenLabs conversation token
+      const token = await this.elevenlabsService.getConversationToken();
+      if (!token) {
+        throw new HttpException(
+          'Failed to get voice token',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      // Create a voice session (reuse chat session infrastructure)
+      const session = await this.guestChatService.getOrCreateSession(
+        invite.id,
+        user.email || '',
+      );
+
+      if (!session) {
+        throw new HttpException(
+          'Failed to create voice session',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return {
+        token,
+        session_id: session.id,
+        agent_id: this.elevenlabsService.getAgentId(),
+        context: {
+          owner_name: invite.owner_name,
+          guest_name: invite.guest_name || 'friend',
+          topic: invite.topic,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to start voice session',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('guest/:code/voice/message')
+  @UseGuards(SupabaseAuthGuard)
+  async storeGuestVoiceMessage(
+    @CurrentUser() user: User,
+    @Param('code') inviteCode: string,
+    @Body() body: { session_id: string; role: 'user' | 'assistant'; content: string },
+  ) {
+    try {
+      // Verify invite and email match
+      const { invite } = await this.invitesService.getGuestStoryByInvite(
+        inviteCode,
+        user.email || '',
+      );
+
+      if (!invite) {
+        throw new HttpException(
+          'Invite not found or email mismatch',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Store message using the chat service's infrastructure
+      await this.guestChatService.storeMessage(
+        body.session_id,
+        body.role,
+        body.content,
+      );
+
+      return { success: true };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to store message',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('guest/:code/voice/end')
+  @UseGuards(SupabaseAuthGuard)
+  async endGuestVoiceSession(
+    @CurrentUser() user: User,
+    @Param('code') inviteCode: string,
+    @Body() body: { session_id: string; guest_name: string },
+  ) {
+    try {
+      // Verify invite and email match
+      const { invite } = await this.invitesService.getGuestStoryByInvite(
+        inviteCode,
+        user.email || '',
+      );
+
+      if (!invite) {
+        throw new HttpException(
+          'Invite not found or email mismatch',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const result = await this.guestChatService.endSessionAndSaveStory(
+        body.session_id,
+        invite.id,
+        invite.user_id,
+        user.email || '',
+        body.guest_name || invite.guest_name || 'Guest',
+      );
+
+      if (!result.success) {
+        throw new HttpException(
+          'Failed to save story from voice conversation',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return {
+        success: true,
+        story_id: result.storyId,
+        message: 'Your story has been saved and is pending approval',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        'Failed to end voice session',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

@@ -496,6 +496,42 @@ export const invitesApi = {
     request<{ success: boolean; story: GuestStory; message: string }>(() =>
       api.put(`/invites/guest/${code}`, data)
     ),
+
+  // Guest chat
+  getOrCreateChatSession: (code: string) =>
+    request<{
+      session: { id: string; invite_id: string; status: string; message_count: number };
+      messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; created_at: string }>;
+    }>(() => api.post(`/invites/guest/${code}/chat/session`)),
+
+  sendChatMessage: (code: string, sessionId: string, content: string) =>
+    request<{ response: string; messageId: string }>(() =>
+      api.post(`/invites/guest/${code}/chat/message`, { session_id: sessionId, content })
+    ),
+
+  endChatAndSaveStory: (code: string, sessionId: string, guestName: string) =>
+    request<{ success: boolean; story_id: string; message: string }>(() =>
+      api.post(`/invites/guest/${code}/chat/end`, { session_id: sessionId, guest_name: guestName })
+    ),
+
+  // Guest voice
+  startVoiceSession: (code: string) =>
+    request<{
+      token: string;
+      session_id: string;
+      agent_id: string;
+      context: { owner_name: string; guest_name: string; topic: string | null };
+    }>(() => api.post(`/invites/guest/${code}/voice/start`)),
+
+  storeVoiceMessage: (code: string, sessionId: string, role: 'user' | 'assistant', content: string) =>
+    request<{ success: boolean }>(() =>
+      api.post(`/invites/guest/${code}/voice/message`, { session_id: sessionId, role, content })
+    ),
+
+  endVoiceAndSaveStory: (code: string, sessionId: string, guestName: string) =>
+    request<{ success: boolean; story_id: string; message: string }>(() =>
+      api.post(`/invites/guest/${code}/voice/end`, { session_id: sessionId, guest_name: guestName })
+    ),
 };
 
 // Conversation API (ElevenLabs)

@@ -8,13 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Heart, Send, CheckCircle, BookOpen, LogIn, AlertCircle, Pencil } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Heart, Send, CheckCircle, BookOpen, LogIn, AlertCircle, Pencil, MessageSquare, Mic, PenLine } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { invitesApi, PublicInvite, GuestInviteWithStory } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { User } from "@supabase/supabase-js";
 import Link from "next/link";
+import { GuestChatInterface } from "@/components/guest-chat-interface";
+import { GuestVoiceCall } from "@/components/guest-voice-call";
 
 export default function ContributePage() {
   const params = useParams();
@@ -344,85 +347,148 @@ export default function ContributePage() {
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{isEditing ? "Update Your Story" : "Your Story"}</CardTitle>
-              <CardDescription>
-                Share a memory, moment, or story that captures something special
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="guest_name">Your Name *</Label>
-                    <Input
-                      id="guest_name"
-                      placeholder="John Smith"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="guest_email">Your Email</Label>
-                    <Input
-                      id="guest_email"
-                      type="email"
-                      value={user.email || ""}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                </div>
+          <Tabs defaultValue="write" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsTrigger value="write" className="gap-2">
+                <PenLine className="h-4 w-4" />
+                Write
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Chat
+              </TabsTrigger>
+              <TabsTrigger value="voice" className="gap-2">
+                <Mic className="h-4 w-4" />
+                Voice
+              </TabsTrigger>
+            </TabsList>
 
-                <div className="space-y-2">
-                  <Label htmlFor="relationship">Your Relationship (optional)</Label>
-                  <Input
-                    id="relationship"
-                    placeholder="e.g., Childhood friend, Sister, Coworker"
-                    value={relationship}
-                    onChange={(e) => setRelationship(e.target.value)}
+            {/* Write Mode */}
+            <TabsContent value="write">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{isEditing ? "Update Your Story" : "Your Story"}</CardTitle>
+                  <CardDescription>
+                    Write your memory or story directly
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="guest_name">Your Name *</Label>
+                        <Input
+                          id="guest_name"
+                          placeholder="John Smith"
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="guest_email">Your Email</Label>
+                        <Input
+                          id="guest_email"
+                          type="email"
+                          value={user.email || ""}
+                          disabled
+                          className="bg-muted"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="relationship">Your Relationship (optional)</Label>
+                      <Input
+                        id="relationship"
+                        placeholder="e.g., Childhood friend, Sister, Coworker"
+                        value={relationship}
+                        onChange={(e) => setRelationship(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Story Title (optional)</Label>
+                      <Input
+                        id="title"
+                        placeholder="e.g., The Summer Road Trip"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="content">Your Story *</Label>
+                      <Textarea
+                        id="content"
+                        placeholder="Write your memory or story here... Be as detailed as you'd like. What happened? Who was there? How did it make you feel?"
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        rows={8}
+                        required
+                        className="resize-none"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {content.length} characters (minimum 50)
+                      </p>
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={submitting}>
+                      {submitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-2" />
+                      )}
+                      {isEditing ? "Update Story" : "Submit Story"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Chat Mode */}
+            <TabsContent value="chat">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Share Through Conversation</CardTitle>
+                  <CardDescription>
+                    Have a chat with our AI to help you tell your story naturally
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <GuestChatInterface
+                    inviteCode={code}
+                    ownerName={invite?.owner_name || ""}
+                    guestName={guestName || guestData?.invite.guest_name || "Guest"}
+                    topic={invite?.topic || undefined}
+                    onStoryCreated={() => setSubmitted(true)}
+                    className="h-[500px]"
                   />
-                </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                <div className="space-y-2">
-                  <Label htmlFor="title">Story Title (optional)</Label>
-                  <Input
-                    id="title"
-                    placeholder="e.g., The Summer Road Trip"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+            {/* Voice Mode */}
+            <TabsContent value="voice">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tell Your Story by Voice</CardTitle>
+                  <CardDescription>
+                    Have a voice conversation with our AI to share your memories
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GuestVoiceCall
+                    inviteCode={code}
+                    ownerName={invite?.owner_name || ""}
+                    guestName={guestName || guestData?.invite.guest_name || "Guest"}
+                    topic={invite?.topic || undefined}
+                    onStoryCreated={() => setSubmitted(true)}
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="content">Your Story *</Label>
-                  <Textarea
-                    id="content"
-                    placeholder="Write your memory or story here... Be as detailed as you'd like. What happened? Who was there? How did it make you feel?"
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    rows={8}
-                    required
-                    className="resize-none"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {content.length} characters (minimum 50)
-                  </p>
-                </div>
-
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  {isEditing ? "Update Story" : "Submit Story"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
             {isEditing
