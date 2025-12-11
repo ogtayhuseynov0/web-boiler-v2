@@ -749,6 +749,11 @@ export default function Home() {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/memoirs" className="hover:text-foreground transition-colors">
+                    Public Memoirs
+                  </Link>
+                </li>
+                <li>
                   <Link href="/login" className="hover:text-foreground transition-colors">
                     Start Free
                   </Link>

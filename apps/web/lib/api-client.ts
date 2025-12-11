@@ -13,6 +13,46 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface MemoirSharingSettings {
+  is_memoir_public: boolean;
+  memoir_share_slug: string | null;
+  memoir_title: string | null;
+  memoir_description: string | null;
+}
+
+export interface PublicMemoir {
+  owner: {
+    name: string;
+    avatar_url: string | null;
+    memoir_title: string | null;
+    memoir_description: string | null;
+  };
+  chapters: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    time_period_start: string | null;
+    time_period_end: string | null;
+    stories: Array<{
+      id: string;
+      title: string | null;
+      content: string;
+      time_period: string | null;
+    }>;
+  }>;
+}
+
+export interface PublicMemoirListItem {
+  id: string;
+  full_name: string | null;
+  preferred_name: string | null;
+  avatar_url: string | null;
+  memoir_title: string | null;
+  memoir_description: string | null;
+  memoir_share_slug: string;
+  updated_at: string;
+}
+
 export interface Call {
   id: string;
   user_id: string;
@@ -146,6 +186,28 @@ export const profileApi = {
 
   updateFocusTopics: (topics: string[]) =>
     request<{ topics: string[] }>(() => api.patch("/profile/focus-topics", { topics })),
+
+  // Memoir Sharing
+  getSharingSettings: () =>
+    request<MemoirSharingSettings>(() => api.get("/profile/sharing")),
+
+  updateSharingSettings: (data: { is_memoir_public?: boolean; memoir_title?: string; memoir_description?: string }) =>
+    request<MemoirSharingSettings>(() => api.patch("/profile/sharing", data)),
+
+  updateShareSlug: (slug: string) =>
+    request<{ slug: string }>(() => api.patch("/profile/sharing/slug", { slug })),
+
+  // Public memoirs (no auth required)
+  getPublicMemoirs: (limit = 20, offset = 0) =>
+    request<{ memoirs: PublicMemoirListItem[]; total: number }>(() =>
+      api.get(`/profile/public/memoirs?limit=${limit}&offset=${offset}`)
+    ),
+
+  getPublicMemoir: (slug: string) =>
+    request<PublicMemoir>(() => api.get(`/profile/public/memoir/${slug}`)),
+
+  getPublicMemoirSlugs: () =>
+    request<{ slugs: string[] }>(() => api.get("/profile/public/memoirs/slugs")),
 };
 
 // Calls API

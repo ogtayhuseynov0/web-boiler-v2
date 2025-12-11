@@ -6,8 +6,9 @@ import ReactMarkdown from "react-markdown";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft, ChevronRight, BookOpen, List } from "lucide-react";
-import { memoirApi, MemoirChapter, profileApi } from "@/lib/api-client";
+import { memoirApi, MemoirChapter, profileApi, MemoirSharingSettings } from "@/lib/api-client";
 import Link from "next/link";
+import { ShareSettings } from "@/components/memoir/share-settings";
 
 interface PageProps {
   children: React.ReactNode;
@@ -36,6 +37,7 @@ export default function MemoirPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [targetPage, setTargetPage] = useState(0);
   const [bookSize, setBookSize] = useState({ width: 550, height: 700 });
+  const [sharingSettings, setSharingSettings] = useState<MemoirSharingSettings | null>(null);
   const bookRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,9 +73,10 @@ export default function MemoirPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [chaptersRes, profileRes] = await Promise.all([
+      const [chaptersRes, profileRes, sharingRes] = await Promise.all([
         memoirApi.getChapters(),
         profileApi.get(),
+        profileApi.getSharingSettings(),
       ]);
 
       if (chaptersRes.data?.chapters) {
@@ -85,6 +88,9 @@ export default function MemoirPage() {
           profileRes.data.full_name ||
           "Your"
         );
+      }
+      if (sharingRes.data) {
+        setSharingSettings(sharingRes.data);
       }
       setLoading(false);
     };
@@ -316,12 +322,15 @@ export default function MemoirPage() {
             Your life stories, beautifully preserved
           </p>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/chapters">
-            <List className="h-4 w-4 mr-2" />
-            Manage Chapters
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <ShareSettings initialSettings={sharingSettings} />
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/chapters">
+              <List className="h-4 w-4 mr-2" />
+              Manage Chapters
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Book Container */}
