@@ -13,6 +13,7 @@ import {
   Brain,
   BookOpen,
   UserPlus,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +26,7 @@ const navigation = [
   { name: "Chapters", href: "/chapters", icon: Brain },
   { name: "Memoir", href: "/memoir", icon: BookOpen },
   { name: "Invites", href: "/invites", icon: UserPlus },
+  { name: "My Submissions", href: "/my-submissions", icon: FileText },
 ];
 
 const settingsNavigation = [

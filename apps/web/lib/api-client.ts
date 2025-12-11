@@ -532,6 +532,55 @@ export const invitesApi = {
     request<{ success: boolean; story_id: string; message: string }>(() =>
       api.post(`/invites/guest/${code}/voice/end`, { session_id: sessionId, guest_name: guestName })
     ),
+
+  // My submissions (guest view)
+  getMySubmissions: () =>
+    request<{
+      submissions: Array<{
+        id: string;
+        guest_name: string;
+        title: string | null;
+        content: string;
+        relationship: string | null;
+        is_approved: boolean;
+        version: number;
+        created_at: string;
+        updated_at: string;
+        invite: {
+          invite_code: string;
+          owner_name: string;
+          topic: string | null;
+        };
+      }>;
+    }>(() => api.get("/invites/my-submissions")),
+
+  getMySubmission: (id: string) =>
+    request<{
+      submission: {
+        id: string;
+        guest_name: string;
+        title: string | null;
+        content: string;
+        relationship: string | null;
+        is_approved: boolean;
+        version: number;
+        created_at: string;
+        updated_at: string;
+        invite: {
+          invite_code: string;
+          owner_name: string;
+          topic: string | null;
+        };
+      };
+    }>(() => api.get(`/invites/my-submissions/${id}`)),
+
+  updateMySubmission: (
+    id: string,
+    data: { guest_name?: string; title?: string; content?: string; relationship?: string }
+  ) =>
+    request<{ success: boolean; submission: unknown; message: string }>(() =>
+      api.put(`/invites/my-submissions/${id}`, data)
+    ),
 };
 
 // Conversation API (ElevenLabs)

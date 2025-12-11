@@ -511,6 +511,190 @@ export class InvitesService {
     return true;
   }
 
+  // ==================== MY SUBMISSIONS (GUEST VIEW) ====================
+
+  async getMySubmissions(guestEmail: string): Promise<
+    Array<
+      GuestStory & {
+        invite: {
+          invite_code: string;
+          owner_name: string;
+          topic: string | null;
+        };
+      }
+    >
+  > {
+    const supabase = this.supabaseService.getClient();
+
+    // Get all guest stories for this email
+    const { data: stories, error } = await supabase
+      .from('guest_stories')
+      .select(
+        `
+        *,
+        story_invites!inner (
+          invite_code,
+          topic,
+          user_id
+        )
+      `,
+      )
+      .eq('guest_email', guestEmail.toLowerCase())
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      this.logger.error('Failed to fetch my submissions:', error);
+      return [];
+    }
+
+    if (!stories || stories.length === 0) {
+      return [];
+    }
+
+    // Get owner names for all unique user_ids
+    const userIds = [...new Set(stories.map((s) => s.story_invites.user_id))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, preferred_name')
+      .in('id', userIds);
+
+    const profileMap = new Map(
+      (profiles || []).map((p) => [
+        p.id,
+        p.preferred_name || p.full_name || 'Someone',
+      ]),
+    );
+
+    return stories.map((story) => ({
+      ...story,
+      invite: {
+        invite_code: story.story_invites.invite_code,
+        owner_name: profileMap.get(story.story_invites.user_id) || 'Someone',
+        topic: story.story_invites.topic,
+      },
+      story_invites: undefined, // Remove the raw join data
+    }));
+  }
+
+  async getMySubmissionById(
+    guestEmail: string,
+    storyId: string,
+  ): Promise<
+    | (GuestStory & {
+        invite: {
+          invite_code: string;
+          owner_name: string;
+          topic: string | null;
+        };
+      })
+    | null
+  > {
+    const supabase = this.supabaseService.getClient();
+
+    const { data: story, error } = await supabase
+      .from('guest_stories')
+      .select(
+        `
+        *,
+        story_invites!inner (
+          invite_code,
+          topic,
+          user_id
+        )
+      `,
+      )
+      .eq('id', storyId)
+      .eq('guest_email', guestEmail.toLowerCase())
+      .eq('is_active', true)
+      .single();
+
+    if (error || !story) {
+      return null;
+    }
+
+    // Get owner profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, preferred_name')
+      .eq('id', story.story_invites.user_id)
+      .single();
+
+    return {
+      ...story,
+      invite: {
+        invite_code: story.story_invites.invite_code,
+        owner_name: profile?.preferred_name || profile?.full_name || 'Someone',
+        topic: story.story_invites.topic,
+      },
+      story_invites: undefined,
+    };
+  }
+
+  async updateMySubmission(
+    guestEmail: string,
+    storyId: string,
+    data: {
+      guestName?: string;
+      title?: string;
+      content?: string;
+      relationship?: string;
+    },
+  ): Promise<GuestStory | null> {
+    const supabase = this.supabaseService.getClient();
+
+    // First verify ownership and get current story
+    const { data: existingStory, error: fetchError } = await supabase
+      .from('guest_stories')
+      .select('*')
+      .eq('id', storyId)
+      .eq('guest_email', guestEmail.toLowerCase())
+      .eq('is_active', true)
+      .single();
+
+    if (fetchError || !existingStory) {
+      this.logger.error('Story not found or access denied:', fetchError);
+      return null;
+    }
+
+    // Build update object
+    const updateData: Record<string, unknown> = {
+      is_approved: false, // Requires re-approval after edit
+      version: existingStory.version + 1,
+    };
+
+    if (data.guestName?.trim()) {
+      updateData.guest_name = data.guestName.trim();
+    }
+    if (data.title !== undefined) {
+      updateData.title = data.title?.trim() || null;
+    }
+    if (data.content?.trim()) {
+      updateData.content = data.content.trim();
+    }
+    if (data.relationship !== undefined) {
+      updateData.relationship = data.relationship?.trim() || null;
+    }
+
+    const { data: updatedStory, error } = await supabase
+      .from('guest_stories')
+      .update(updateData)
+      .eq('id', storyId)
+      .eq('guest_email', guestEmail.toLowerCase())
+      .select()
+      .single();
+
+    if (error) {
+      this.logger.error('Failed to update submission:', error);
+      return null;
+    }
+
+    this.logger.log(
+      `Guest submission updated: ${storyId} (v${updatedStory.version}) - awaiting re-approval`,
+    );
+    return updatedStory;
+  }
+
   // Helper to get full invite URL
   getInviteUrl(inviteCode: string): string {
     const frontendUrl = this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';
