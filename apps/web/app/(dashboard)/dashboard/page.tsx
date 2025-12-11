@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, BookOpen, MessageSquare, Brain, Mic, List, Plus, X, Sparkles } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, BookOpen, MessageSquare, Brain, Mic, Plus, X, Sparkles } from "lucide-react";
 import { profileApi, Profile, memoirApi, callsApi } from "@/lib/api-client";
 import { ChatInterface } from "@/components/chat/chat-interface";
-import Link from "next/link";
+import { VoiceCall } from "@/components/voice-call";
 
 const SUGGESTED_TOPICS = [
   "Childhood memories",
@@ -146,18 +147,39 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Main Content - Chat fills remaining space */}
+      {/* Main Content - Chat/Voice fills remaining space */}
       <div className="flex-1 min-h-0 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 flex flex-col min-h-0">
           <Card className="flex-1 flex flex-col min-h-0 py-0 pt-4">
-            <CardHeader className="flex-shrink-0">
+            <CardHeader className="flex-shrink-0 pb-2">
               <CardTitle>Share Your Story</CardTitle>
               <CardDescription>
                 Type or talk to capture your memories, experiences, and life moments.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 min-h-0 p-0">
-              <ChatInterface onNewMemories={handleNewStories} className="border-0 shadow-none rounded-none h-full" />
+            <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
+              <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
+                <div className="px-6 pb-2">
+                  <TabsList className="grid w-full max-w-[300px] grid-cols-2">
+                    <TabsTrigger value="chat" className="gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Chat
+                    </TabsTrigger>
+                    <TabsTrigger value="voice" className="gap-2">
+                      <Mic className="h-4 w-4" />
+                      Voice
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                <TabsContent value="chat" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+                  <ChatInterface onNewMemories={handleNewStories} className="border-0 shadow-none rounded-none h-full" />
+                </TabsContent>
+                <TabsContent value="voice" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+                  <div className="flex items-center justify-center h-full p-6">
+                    <VoiceCall onCallEnd={() => handleNewStories()} />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
