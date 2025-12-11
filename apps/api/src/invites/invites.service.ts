@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ConfigService } from '@nestjs/config';
+import { MemoirService } from '../memoir/memoir.service';
 import * as crypto from 'crypto';
 
 export interface StoryInvite {
@@ -46,6 +47,7 @@ export class InvitesService {
   constructor(
     private supabaseService: SupabaseService,
     private configService: ConfigService,
+    private memoirService: MemoirService,
   ) {}
 
   // Generate a random invite code
@@ -308,13 +310,42 @@ export class InvitesService {
   ): Promise<GuestStory | null> {
     const supabase = this.supabaseService.getClient();
 
+    // First get the guest story
+    const { data: guestStory, error: fetchError } = await supabase
+      .from('guest_stories')
+      .select('*')
+      .eq('id', storyId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !guestStory) {
+      this.logger.error('Failed to fetch guest story:', fetchError);
+      return null;
+    }
+
+    // Create the story in chapter_stories (the actual memoir)
+    const memoirStory = await this.memoirService.createStory({
+      userId,
+      chapterId: chapterId || undefined,
+      title: guestStory.title || `Story from ${guestStory.guest_name}`,
+      content: guestStory.content,
+      summary: guestStory.relationship
+        ? `Shared by ${guestStory.guest_name} (${guestStory.relationship})`
+        : `Shared by ${guestStory.guest_name}`,
+      sourceType: 'manual',
+      sourceId: `guest:${storyId}`,
+    });
+
+    if (!memoirStory) {
+      this.logger.error('Failed to create memoir story from guest story');
+      return null;
+    }
+
+    // Mark guest story as approved
     const updateData: Record<string, unknown> = {
       is_approved: true,
+      chapter_id: memoirStory.chapter_id,
     };
-
-    if (chapterId) {
-      updateData.chapter_id = chapterId;
-    }
 
     const { data: story, error } = await supabase
       .from('guest_stories')
@@ -329,6 +360,7 @@ export class InvitesService {
       return null;
     }
 
+    this.logger.log(`Guest story ${storyId} approved and added to memoir as ${memoirStory.id}`);
     return story;
   }
 
