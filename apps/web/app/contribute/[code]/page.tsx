@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Heart, Send, CheckCircle, BookOpen } from "lucide-react";
+import { Toaster } from "@/components/ui/sonner";
 import { invitesApi, PublicInvite } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -138,14 +139,16 @@ export default function ContributePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-            <Heart className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold mb-2">
-            Share a Story for {invite?.owner_name}'s Memoir
+    <>
+      <Toaster />
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <Heart className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">
+              Share a Story for {invite?.owner_name}'s Memoir
           </h1>
           <p className="text-muted-foreground">
             {invite?.message ||
@@ -248,7 +251,8 @@ export default function ContributePage() {
         <p className="text-center text-xs text-muted-foreground mt-6">
           Your story will be reviewed by {invite?.owner_name} before being added to their memoir.
         </p>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -26,7 +26,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, ArrowLeft, Plus, Pencil, Trash2, BookOpen } from "lucide-react";
+import { Loader2, ArrowLeft, Plus, Pencil, Trash2, BookOpen, UserPlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { memoirApi, MemoirChapter, ChapterStory } from "@/lib/api-client";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -256,9 +257,20 @@ export default function ChapterDetailPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div>
-                    {story.title && <CardTitle className="text-lg">{story.title}</CardTitle>}
+                    <div className="flex items-center gap-2">
+                      {story.title && <CardTitle className="text-lg">{story.title}</CardTitle>}
+                      {story.source_type === "guest" && (
+                        <Badge variant="secondary" className="gap-1">
+                          <UserPlus className="h-3 w-3" />
+                          Guest
+                        </Badge>
+                      )}
+                    </div>
                     {story.time_period && (
                       <CardDescription>{story.time_period}</CardDescription>
+                    )}
+                    {story.source_type === "guest" && story.summary && (
+                      <CardDescription className="text-xs mt-1">{story.summary}</CardDescription>
                     )}
                   </div>
                   <div className="flex gap-2">

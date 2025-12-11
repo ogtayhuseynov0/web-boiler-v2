@@ -332,7 +332,7 @@ export class InvitesService {
       summary: guestStory.relationship
         ? `Shared by ${guestStory.guest_name} (${guestStory.relationship})`
         : `Shared by ${guestStory.guest_name}`,
-      sourceType: 'manual',
+      sourceType: 'guest',
       sourceId: `guest:${storyId}`,
     });
 

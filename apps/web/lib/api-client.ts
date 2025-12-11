@@ -281,7 +281,7 @@ export interface ChapterStory {
   content: string;
   summary: string | null;
   time_period: string | null;
-  source_type: 'chat' | 'call' | 'manual';
+  source_type: 'chat' | 'call' | 'manual' | 'guest';
   source_id: string | null;
   display_order: number;
   is_active: boolean;

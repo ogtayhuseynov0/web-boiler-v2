@@ -47,7 +47,7 @@ export interface CreateStoryDto {
   content: string;
   summary?: string;
   timePeriod?: string;
-  sourceType?: 'chat' | 'call' | 'manual';
+  sourceType?: 'chat' | 'call' | 'manual' | 'guest';
   sourceId?: string;
 }
 
