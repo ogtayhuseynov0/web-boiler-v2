@@ -1,30 +1,81 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Loader2, Send, Sparkles, User, RotateCcw } from "lucide-react";
-import { chatApi, ChatMessage, ChatSession } from "@/lib/api-client";
+import { Loader2, Send, Sparkles, User, RotateCcw, CheckCircle } from "lucide-react";
+import { chatApi, invitesApi, ChatMessage, ChatSession } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ChatInterfaceProps {
   onNewMemories?: () => void;
   className?: string;
+  // Invite mode props
+  inviteCode?: string;
+  ownerName?: string;
+  guestName?: string;
+  topic?: string;
+  onStoryCreated?: () => void;
 }
 
-export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) {
-  const [session, setSession] = useState<ChatSession | null>(null);
+interface InviteSession {
+  id: string;
+  invite_id: string;
+  status: string;
+  message_count: number;
+}
+
+export function ChatInterface({
+  onNewMemories,
+  className,
+  inviteCode,
+  ownerName,
+  guestName,
+  topic,
+  onStoryCreated,
+}: ChatInterfaceProps) {
+  const isInviteMode = !!inviteCode;
+
+  const [session, setSession] = useState<ChatSession | InviteSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const initializeChat = useCallback(async () => {
+    setIsInitializing(true);
+    if (isInviteMode) {
+      const res = await invitesApi.getOrCreateChatSession(inviteCode);
+      if (res.data) {
+        setSession(res.data.session);
+        // Add initial greeting if no messages
+        if (res.data.messages.length === 0) {
+          const greeting = topic
+            ? `Hi ${guestName}! I'd love to hear your memories about ${ownerName}. They mentioned they'd especially love to hear about: "${topic}". What comes to mind?`
+            : `Hi ${guestName}! I'd love to hear your memories and stories about ${ownerName}. What's a moment or memory that stands out to you?`;
+          setMessages([{ id: "greeting", session_id: res.data.session.id, role: "assistant", content: greeting, created_at: new Date().toISOString() }]);
+        } else {
+          setMessages(res.data.messages.map((m) => ({ ...m, session_id: res.data!.session.id })));
+        }
+      }
+    } else {
+      const res = await chatApi.getActiveSession();
+      if (res.data) {
+        setSession(res.data.session);
+        setMessages(res.data.messages || []);
+      }
+    }
+    setIsInitializing(false);
+  }, [isInviteMode, inviteCode, guestName, ownerName, topic]);
+
   useEffect(() => {
     initializeChat();
-  }, []);
+  }, [initializeChat]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -32,16 +83,6 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const initializeChat = async () => {
-    setIsInitializing(true);
-    const res = await chatApi.getActiveSession();
-    if (res.data) {
-      setSession(res.data.session);
-      setMessages(res.data.messages || []);
-    }
-    setIsInitializing(false);
-  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -61,49 +102,89 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
     setMessages((prev) => [...prev, tempUserMessage]);
 
     try {
-      // Get or create session if needed
-      let currentSessionId = session?.id;
-      if (!currentSessionId) {
-        const sessionRes = await chatApi.getOrCreateSession();
-        if (sessionRes.data?.session) {
-          setSession(sessionRes.data.session);
-          currentSessionId = sessionRes.data.session.id;
-        }
-      }
-
-      if (!currentSessionId) {
-        throw new Error("Failed to create session");
-      }
-
-      const res = await chatApi.sendMessage(currentSessionId, userMessage);
-
-      if (res.data) {
-        // Update session ID if it was just created
-        if (res.data.session_id && res.data.session_id !== session?.id) {
-          setSession((prev) => prev ? { ...prev, id: res.data!.session_id } : null);
+      if (isInviteMode) {
+        // Invite mode - use invitesApi
+        let currentSessionId = session?.id;
+        if (!currentSessionId) {
+          const sessionRes = await invitesApi.getOrCreateChatSession(inviteCode!);
+          if (sessionRes.data?.session) {
+            setSession(sessionRes.data.session);
+            currentSessionId = sessionRes.data.session.id;
+          }
         }
 
-        // Add assistant response
-        const assistantMessage: ChatMessage = {
-          id: res.data.message_id,
-          session_id: res.data.session_id,
-          role: "assistant",
-          content: res.data.response,
-          created_at: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
+        if (!currentSessionId) {
+          throw new Error("Failed to create session");
+        }
 
-        // Notify parent about potential new memories
-        onNewMemories?.();
+        const res = await invitesApi.sendChatMessage(inviteCode!, currentSessionId, userMessage);
+
+        if (res.data) {
+          const assistantMessage: ChatMessage = {
+            id: res.data.messageId,
+            session_id: currentSessionId,
+            role: "assistant",
+            content: res.data.response,
+            created_at: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        }
+      } else {
+        // Normal mode - use chatApi
+        let currentSessionId = session?.id;
+        if (!currentSessionId) {
+          const sessionRes = await chatApi.getOrCreateSession();
+          if (sessionRes.data?.session) {
+            setSession(sessionRes.data.session);
+            currentSessionId = sessionRes.data.session.id;
+          }
+        }
+
+        if (!currentSessionId) {
+          throw new Error("Failed to create session");
+        }
+
+        const res = await chatApi.sendMessage(currentSessionId, userMessage);
+
+        if (res.data) {
+          if (res.data.session_id && res.data.session_id !== session?.id) {
+            setSession((prev) => prev ? { ...prev, id: res.data!.session_id } : null);
+          }
+
+          const assistantMessage: ChatMessage = {
+            id: res.data.message_id,
+            session_id: res.data.session_id,
+            role: "assistant",
+            content: res.data.response,
+            created_at: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+
+          onNewMemories?.();
+        }
       }
     } catch (error) {
       console.error("Failed to send message:", error);
-      // Remove optimistic message on error
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
     } finally {
       setIsLoading(false);
       textareaRef.current?.focus();
     }
+  };
+
+  const handleSaveStory = async () => {
+    if (!session?.id || messages.length < 3 || !isInviteMode) return;
+
+    setIsSaving(true);
+    const res = await invitesApi.endChatAndSaveStory(inviteCode!, session.id, guestName || "Guest");
+
+    if (res.data?.success) {
+      toast.success(res.data.message);
+      onStoryCreated?.();
+    } else {
+      toast.error("Failed to save story");
+    }
+    setIsSaving(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -218,21 +299,21 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
         )}
       </div>
 
-      <div className="p-4 border-t flex-shrink-0">
+      <div className="p-4 border-t flex-shrink-0 space-y-3">
         <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Share a memory or story..."
+            placeholder={isInviteMode ? `Share your memory about ${ownerName}...` : "Share a memory or story..."}
             className="min-h-[44px] pt-2.5 max-h-[120px] resize-none"
             rows={1}
-            disabled={isLoading}
+            disabled={isLoading || isSaving}
           />
           <Button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || isSaving}
             size="icon"
             className="flex-shrink-0 h-[44px] w-[44px]"
           >
@@ -243,23 +324,48 @@ export function ChatInterface({ onNewMemories, className }: ChatInterfaceProps) 
             )}
           </Button>
         </div>
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-muted-foreground">
-            Press Enter to send, Shift+Enter for new line
+
+        {isInviteMode && messages.length >= 3 && (
+          <Button
+            onClick={handleSaveStory}
+            disabled={isSaving}
+            variant="outline"
+            className="w-full"
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <CheckCircle className="h-4 w-4 mr-2" />
+            )}
+            Save Story & Submit for Review
+          </Button>
+        )}
+
+        {isInviteMode && messages.length < 3 && (
+          <p className="text-xs text-center text-muted-foreground">
+            Continue chatting to share your story. When done, you can save and submit it.
           </p>
-          {messages.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleEndSession}
-              disabled={isLoading}
-              className="text-xs h-7 text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw className="h-3 w-3 mr-1" />
-              New Session
-            </Button>
-          )}
-        </div>
+        )}
+
+        {!isInviteMode && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Press Enter to send, Shift+Enter for new line
+            </p>
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEndSession}
+                disabled={isLoading}
+                className="text-xs h-7 text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3 w-3 mr-1" />
+                New Session
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </Card>
   );

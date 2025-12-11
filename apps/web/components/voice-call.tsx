@@ -11,8 +11,9 @@ import {
   Volume2,
   VolumeX,
   Loader2,
+  CheckCircle,
 } from "lucide-react";
-import { conversationApi } from "@/lib/api-client";
+import { conversationApi, invitesApi } from "@/lib/api-client";
 import { toast } from "sonner";
 import { Conversation } from "@elevenlabs/client";
 
@@ -24,13 +25,28 @@ interface Message {
 
 interface VoiceCallProps {
   onCallEnd?: (callId: string, durationSeconds: number) => void;
+  // Invite mode props
+  inviteCode?: string;
+  ownerName?: string;
+  guestName?: string;
+  topic?: string;
+  onStoryCreated?: () => void;
 }
 
-export function VoiceCall({ onCallEnd }: VoiceCallProps) {
+export function VoiceCall({
+  onCallEnd,
+  inviteCode,
+  ownerName,
+  guestName,
+  topic,
+  onStoryCreated,
+}: VoiceCallProps) {
+  const isInviteMode = !!inviteCode;
   const [status, setStatus] = useState<
-    "idle" | "connecting" | "connected" | "disconnected"
+    "idle" | "connecting" | "connected" | "disconnected" | "saving"
   >("idle");
   const [isMuted, setIsMuted] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [mode, setMode] = useState<"listening" | "speaking">("listening");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -107,17 +123,47 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
       // Request microphone permission first
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Get conversation token from our backend
-      const response = await conversationApi.start();
+      let token: string;
+      let call_id: string | null = null;
+      let session_id: string | null = null;
+      let contextMessage: string | null = null;
 
-      if (response.error || !response.data?.token) {
-        toast.error(response.data?.error || response.error || "Failed to start call");
-        setStatus("idle");
-        return;
+      if (isInviteMode) {
+        // Invite mode - use invitesApi
+        const response = await invitesApi.startVoiceSession(inviteCode!);
+
+        if (response.error || !response.data?.token) {
+          toast.error(response.error || "Failed to start voice session");
+          setStatus("idle");
+          return;
+        }
+
+        token = response.data.token;
+        session_id = response.data.session_id;
+        setSessionId(session_id);
+
+        const ctx = response.data.context;
+        contextMessage = topic
+          ? `You are interviewing ${ctx.guest_name} to collect stories about ${ctx.owner_name} for their memoir. The suggested topic is: "${topic}". Ask warm, engaging questions to draw out their memories.`
+          : `You are interviewing ${ctx.guest_name} to collect stories about ${ctx.owner_name} for their memoir. Ask warm, engaging questions to draw out their memories.`;
+      } else {
+        // Normal mode - use conversationApi
+        const response = await conversationApi.start();
+
+        if (response.error || !response.data?.token) {
+          toast.error(response.data?.error || response.error || "Failed to start call");
+          setStatus("idle");
+          return;
+        }
+
+        token = response.data.token;
+        call_id = response.data.call_id || null;
+        setCallId(call_id);
+
+        if (response.data.context) {
+          contextMessage = `User's name is ${response.data.context.user_name}. Known facts about the user:\n${response.data.context.memories}`;
+        }
       }
-
-      const { token, call_id, context } = response.data;
-      setCallId(call_id || null);
 
       // Start ElevenLabs conversation
       const conversation = await Conversation.startSession({
@@ -127,17 +173,18 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
           setStatus("connected");
           toast.success("Connected!");
 
-          // Link ElevenLabs conversation ID with our call
-          const conversationId = (props as { conversationId?: string })?.conversationId;
-          if (conversationId && call_id) {
-            conversationApi.linkConversation(call_id, conversationId);
+          // Link ElevenLabs conversation ID with our call (only in normal mode)
+          if (!isInviteMode) {
+            const conversationId = (props as { conversationId?: string })?.conversationId;
+            if (conversationId && call_id) {
+              conversationApi.linkConversation(call_id, conversationId);
+            }
           }
         },
         onDisconnect: () => {
           setStatus("disconnected");
         },
         onMessage: (message: { source?: string; message?: string }) => {
-          // Handle transcription messages
           if (message.source && message.message) {
             const role = message.source === "user" ? "user" : "assistant";
             const newMessage: Message = {
@@ -148,7 +195,9 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
             setMessages((prev) => [...prev, newMessage]);
 
             // Store message in backend
-            if (call_id) {
+            if (isInviteMode && session_id) {
+              invitesApi.storeVoiceMessage(inviteCode!, session_id, role, message.message);
+            } else if (call_id) {
               conversationApi.storeMessage(call_id, role, message.message);
             }
           }
@@ -164,18 +213,16 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
 
       conversationRef.current = conversation;
 
-      // Send context update with user info
-      if (context) {
-        conversation.sendContextualUpdate(
-          `User's name is ${context.user_name}. Known facts about the user:\n${context.memories}`
-        );
+      // Send context update
+      if (contextMessage) {
+        conversation.sendContextualUpdate(contextMessage);
       }
     } catch (error) {
       console.error("Failed to start call:", error);
       toast.error("Failed to start call. Please check microphone permissions.");
       setStatus("idle");
     }
-  }, []);
+  }, [isInviteMode, inviteCode, topic]);
 
   const endCall = useCallback(async () => {
     if (conversationRef.current) {
@@ -188,21 +235,44 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
       ? Math.floor((Date.now() - startTimeRef.current) / 1000)
       : duration;
 
-    // End call on backend
-    if (callId) {
-      await conversationApi.end(callId, finalDuration);
-      onCallEnd?.(callId, finalDuration);
+    if (isInviteMode) {
+      // In invite mode, just end the call - don't reset messages yet
+      // User will save the story separately
+      setStatus("disconnected");
+      setDuration(0);
+      startTimeRef.current = null;
+      toast.success(`Call ended. Duration: ${formatDuration(finalDuration)}`);
+    } else {
+      // End call on backend
+      if (callId) {
+        await conversationApi.end(callId, finalDuration);
+        onCallEnd?.(callId, finalDuration);
+      }
+
+      // Reset state
+      setStatus("idle");
+      setDuration(0);
+      setMessages([]);
+      setCallId(null);
+      startTimeRef.current = null;
+      toast.success(`Call ended. Duration: ${formatDuration(finalDuration)}`);
     }
+  }, [callId, duration, onCallEnd, isInviteMode]);
 
-    // Reset state
-    setStatus("idle");
-    setDuration(0);
-    setMessages([]);
-    setCallId(null);
-    startTimeRef.current = null;
+  const handleSaveStory = useCallback(async () => {
+    if (!sessionId || messages.length < 2 || !isInviteMode) return;
 
-    toast.success(`Call ended. Duration: ${formatDuration(finalDuration)}`);
-  }, [callId, duration, onCallEnd]);
+    setStatus("saving");
+    const res = await invitesApi.endVoiceAndSaveStory(inviteCode!, sessionId, guestName || "Guest");
+
+    if (res.data?.success) {
+      toast.success(res.data.message);
+      onStoryCreated?.();
+    } else {
+      toast.error("Failed to save story");
+      setStatus("disconnected");
+    }
+  }, [sessionId, messages.length, isInviteMode, inviteCode, guestName, onStoryCreated]);
 
   const toggleMute = useCallback(() => {
     if (conversationRef.current) {
@@ -229,12 +299,12 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
                 ? mode === "speaking"
                   ? "bg-green-500/20 ring-4 ring-green-500/50"
                   : "bg-blue-500/20 ring-4 ring-blue-500/50"
-                : status === "connecting"
+                : status === "connecting" || status === "saving"
                   ? "bg-yellow-500/20 animate-pulse"
                   : "bg-muted"
             }`}
           >
-            {status === "connecting" ? (
+            {status === "connecting" || status === "saving" ? (
               <Loader2 className="w-12 h-12 text-yellow-500 animate-spin" />
             ) : status === "connected" ? (
               <div className="relative">
@@ -251,16 +321,23 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
           </div>
 
           <h3 className="text-lg font-semibold">
-            {status === "idle" && "Ready to call"}
+            {status === "idle" && (isInviteMode ? "Ready to share your story" : "Ready to call")}
             {status === "connecting" && "Connecting..."}
             {status === "connected" &&
               (mode === "speaking" ? "AI Speaking..." : "Listening...")}
             {status === "disconnected" && "Call ended"}
+            {status === "saving" && "Saving your story..."}
           </h3>
 
           {status === "connected" && (
             <p className="text-2xl font-mono text-muted-foreground mt-2">
               {formatDuration(duration)}
+            </p>
+          )}
+
+          {isInviteMode && ownerName && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Share your memories about {ownerName}
             </p>
           )}
         </div>
@@ -300,14 +377,14 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
             >
               <Phone className="w-6 h-6" />
             </Button>
-          ) : status === "connecting" ? (
+          ) : status === "connecting" || status === "saving" ? (
             <Button
               size="lg"
               variant="destructive"
               className="rounded-full w-16 h-16"
-              onClick={() => setStatus("idle")}
+              disabled
             >
-              <PhoneOff className="w-6 h-6" />
+              <Loader2 className="w-6 h-6 animate-spin" />
             </Button>
           ) : status === "connected" ? (
             <>
@@ -347,13 +424,16 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
               </Button>
             </>
           ) : (
-            <Button
-              size="lg"
-              className="rounded-full w-16 h-16 bg-green-500 hover:bg-green-600"
-              onClick={startCall}
-            >
-              <Phone className="w-6 h-6" />
-            </Button>
+            // Disconnected state
+            <div className="flex flex-col items-center gap-4">
+              <Button
+                size="lg"
+                className="rounded-full w-16 h-16 bg-green-500 hover:bg-green-600"
+                onClick={startCall}
+              >
+                <Phone className="w-6 h-6" />
+              </Button>
+            </div>
           )}
         </div>
 
@@ -368,6 +448,41 @@ export function VoiceCall({ onCallEnd }: VoiceCallProps) {
               />
             </div>
           </div>
+        )}
+
+        {/* Save story button in invite mode */}
+        {isInviteMode && status === "disconnected" && messages.length >= 2 && (
+          <div className="mt-6">
+            <Button
+              onClick={handleSaveStory}
+              variant="default"
+              className="w-full"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Save Story & Submit for Review
+            </Button>
+          </div>
+        )}
+
+        {isInviteMode && status === "connected" && messages.length >= 2 && (
+          <div className="mt-6">
+            <Button
+              onClick={async () => {
+                await endCall();
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              End Call & Review Story
+            </Button>
+          </div>
+        )}
+
+        {isInviteMode && (status === "connected" || status === "disconnected") && messages.length < 2 && (
+          <p className="text-xs text-center text-muted-foreground mt-4">
+            Continue the conversation to share your story. When done, you can save and submit it.
+          </p>
         )}
       </CardContent>
     </Card>

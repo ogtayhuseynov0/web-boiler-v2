@@ -16,8 +16,8 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { User } from "@supabase/supabase-js";
 import Link from "next/link";
-import { GuestChatInterface } from "@/components/guest-chat-interface";
-import { GuestVoiceCall } from "@/components/guest-voice-call";
+import { ChatInterface } from "@/components/chat/chat-interface";
+import { VoiceCall } from "@/components/voice-call";
 
 export default function ContributePage() {
   const params = useParams();
@@ -447,29 +447,19 @@ export default function ContributePage() {
             </TabsContent>
 
             {/* Chat Mode */}
-            <TabsContent value="chat">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Share Through Conversation</CardTitle>
-                  <CardDescription>
-                    Have a chat with our AI to help you tell your story naturally
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <GuestChatInterface
-                    inviteCode={code}
-                    ownerName={invite?.owner_name || ""}
-                    guestName={guestName || guestData?.invite.guest_name || "Guest"}
-                    topic={invite?.topic || undefined}
-                    onStoryCreated={() => setSubmitted(true)}
-                    className="h-[500px]"
-                  />
-                </CardContent>
-              </Card>
+            <TabsContent value="chat" className="mt-0">
+              <ChatInterface
+                inviteCode={code}
+                ownerName={invite?.owner_name || ""}
+                guestName={guestName || guestData?.invite.guest_name || "Guest"}
+                topic={invite?.topic || undefined}
+                onStoryCreated={() => setSubmitted(true)}
+                className="h-[500px]"
+              />
             </TabsContent>
 
             {/* Voice Mode */}
-            <TabsContent value="voice">
+            <TabsContent value="voice" className="mt-0">
               <Card>
                 <CardHeader>
                   <CardTitle>Tell Your Story by Voice</CardTitle>
@@ -478,7 +468,7 @@ export default function ContributePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <GuestVoiceCall
+                  <VoiceCall
                     inviteCode={code}
                     ownerName={invite?.owner_name || ""}
                     guestName={guestName || guestData?.invite.guest_name || "Guest"}
