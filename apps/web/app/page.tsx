@@ -130,8 +130,31 @@ export default function Home() {
           </div>
         </section>
 
+        {/* What is Memoir - Clear Purpose Statement */}
+        <section id="about" className="py-16 px-4 bg-card border-y">
+          <div className="container mx-auto max-w-4xl">
+            <div className="text-center">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-6">
+                What is Memoir?
+              </h2>
+              <div className="text-left space-y-4 text-muted-foreground">
+                <p className="text-lg leading-relaxed">
+                  <strong className="text-foreground">Memoir</strong> is a web application that helps you preserve your life stories and family memories. Using voice conversations, chat, or traditional writing, you can share your experiences with our AI assistant, which organizes them into a beautiful, readable memoir.
+                </p>
+                <p className="leading-relaxed">
+                  <strong className="text-foreground">How it works:</strong> Sign in with your Google account (we only use your email for authentication), then start sharing your stories through voice calls, chat messages, or written entries. Our AI listens, asks thoughtful follow-up questions, and transforms your words into organized chapters. You can invite family members to contribute their own stories, making your memoir a collaborative family project.
+                </p>
+                <p className="leading-relaxed">
+                  <strong className="text-foreground">Your data is private:</strong> Your stories are encrypted and stored securely. You control who can see your memoir — keep it private, share with specific family members, or make it public. We never sell your data or use it for advertising. See our{" "}
+                  <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link> for full details.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Features Section */}
-        <section className="py-24 px-4 bg-muted/30">
+        <section id="features" className="py-24 px-4 bg-muted/30">
           <div className="container mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">
