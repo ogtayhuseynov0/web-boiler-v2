@@ -19,29 +19,14 @@ import {
   Plane,
   Gift,
   Check,
-  Star,
+  UserPlus,
 } from "lucide-react";
+import { LandingHeader } from "@/components/landing-header";
 
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">Memoir</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Login</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/login">Start Your Memoir</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <LandingHeader />
 
       <main className="flex-1">
         {/* Hero Section */}
@@ -83,15 +68,15 @@ export default function Home() {
               <div className="mt-12 flex flex-wrap justify-center items-center gap-8 text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Shield className="h-5 w-5 text-primary" />
-                  <span className="text-sm">End-to-end encrypted</span>
+                  <span className="text-sm">Private & secure</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Heart className="h-5 w-5 text-primary" />
-                  <span className="text-sm">Loved by 10,000+ families</span>
+                  <span className="text-sm">Free to start</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-primary" />
-                  <span className="text-sm">4.9/5 rating</span>
+                  <Clock className="h-5 w-5 text-primary" />
+                  <span className="text-sm">Set up in minutes</span>
                 </div>
               </div>
             </div>
@@ -144,30 +129,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Stats Section */}
-        <section className="py-16 px-4 border-y bg-muted/20">
-          <div className="container mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto text-center">
-              <div>
-                <p className="text-4xl font-bold text-primary mb-2">50,000+</p>
-                <p className="text-muted-foreground">Stories Captured</p>
-              </div>
-              <div>
-                <p className="text-4xl font-bold text-primary mb-2">10,000+</p>
-                <p className="text-muted-foreground">Happy Families</p>
-              </div>
-              <div>
-                <p className="text-4xl font-bold text-primary mb-2">4.9</p>
-                <p className="text-muted-foreground">Average Rating</p>
-              </div>
-              <div>
-                <p className="text-4xl font-bold text-primary mb-2">100+</p>
-                <p className="text-muted-foreground">Countries</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Features Section */}
         <section className="py-24 px-4 bg-muted/30">
           <div className="container mx-auto">
@@ -186,24 +147,48 @@ export default function Home() {
                 <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
                   <Mic className="h-7 w-7 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Just Talk</h3>
+                <h3 className="text-xl font-semibold mb-3">Voice, Chat, or Write</h3>
                 <p className="text-muted-foreground mb-4">
-                  No typing required. Simply speak naturally and share your
-                  stories through voice conversations. It&apos;s like talking to
-                  a friend who never forgets.
+                  Share your stories your way. Have a voice conversation, chat with
+                  our AI, or simply write. Whatever feels natural to you.
                 </p>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
-                    Natural conversation flow
+                    Real-time voice conversations
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
-                    Voice or text input
+                    AI-guided chat sessions
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
-                    No learning curve
+                    Traditional writing mode
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-card rounded-2xl p-8 border shadow-sm hover:shadow-lg transition-shadow">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <UserPlus className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Invite Family & Friends</h3>
+                <p className="text-muted-foreground mb-4">
+                  Your story isn&apos;t just yours. Invite loved ones to contribute their
+                  memories and perspectives. Build a richer, fuller memoir together.
+                </p>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    Send invite links
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    Review & approve stories
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    Multiple perspectives
                   </li>
                 </ul>
               </div>
@@ -233,12 +218,15 @@ export default function Home() {
                   </li>
                 </ul>
               </div>
+            </div>
 
+            {/* Second row of features */}
+            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mt-8">
               <div className="bg-card rounded-2xl p-8 border shadow-sm hover:shadow-lg transition-shadow">
                 <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
                   <BookOpen className="h-7 w-7 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Beautiful Memoir</h3>
+                <h3 className="text-xl font-semibold mb-3">Beautiful Chapters</h3>
                 <p className="text-muted-foreground mb-4">
                   Watch your stories transform into a beautifully organized
                   memoir. Flip through your life like pages of a book, organized
@@ -247,7 +235,7 @@ export default function Home() {
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
-                    Organized by themes
+                    Auto-organized by themes
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
@@ -256,6 +244,56 @@ export default function Home() {
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
                     Export & share
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-card rounded-2xl p-8 border shadow-sm hover:shadow-lg transition-shadow">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <MessageSquare className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Guided Prompts</h3>
+                <p className="text-muted-foreground mb-4">
+                  Not sure where to start? Our AI guides you with thoughtful
+                  prompts that help unlock memories you didn&apos;t know you still had.
+                </p>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    Personalized prompts
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    Follow-up questions
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    Memory triggers
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-card rounded-2xl p-8 border shadow-sm hover:shadow-lg transition-shadow">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+                  <Shield className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Private & Secure</h3>
+                <p className="text-muted-foreground mb-4">
+                  Your stories are precious. They&apos;re encrypted end-to-end
+                  and stored securely. You control who sees your memoir.
+                </p>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    End-to-end encryption
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    You own your data
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    Granular sharing controls
                   </li>
                 </ul>
               </div>
@@ -499,89 +537,6 @@ export default function Home() {
                 <p className="text-xs text-primary font-medium italic">
                   &quot;What&apos;s the best advice you&apos;ve ever received...&quot;
                 </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="py-24 px-4 bg-muted/30">
-          <div className="container mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                Stories From Our Community
-              </h2>
-              <p className="text-xl text-muted-foreground">
-                Thousands of families are preserving their legacies with Memoir
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              <div className="bg-card rounded-2xl p-8 border shadow-sm">
-                <div className="flex gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="h-5 w-5 fill-primary text-primary" />
-                  ))}
-                </div>
-                <blockquote className="text-lg mb-6 leading-relaxed">
-                  &quot;I always wanted to write down my life story for my
-                  grandkids, but never had the time or knew where to start. With
-                  Memoir, I just talk, and it&apos;s all there. It&apos;s like
-                  magic.&quot;
-                </blockquote>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-lg font-semibold text-primary">M</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Margaret Thompson</p>
-                    <p className="text-sm text-muted-foreground">Grandmother of 5</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-card rounded-2xl p-8 border shadow-sm">
-                <div className="flex gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="h-5 w-5 fill-primary text-primary" />
-                  ))}
-                </div>
-                <blockquote className="text-lg mb-6 leading-relaxed">
-                  &quot;My father was diagnosed with early dementia. We used Memoir
-                  to capture his stories before they faded. Now my children will
-                  always know who their grandfather was.&quot;
-                </blockquote>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-lg font-semibold text-primary">D</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">David Chen</p>
-                    <p className="text-sm text-muted-foreground">Son & Father</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-card rounded-2xl p-8 border shadow-sm">
-                <div className="flex gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="h-5 w-5 fill-primary text-primary" />
-                  ))}
-                </div>
-                <blockquote className="text-lg mb-6 leading-relaxed">
-                  &quot;I gave my mom a Memoir subscription for her 80th birthday.
-                  She calls me every week to share what stories she&apos;s added.
-                  Best gift I&apos;ve ever given.&quot;
-                </blockquote>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-lg font-semibold text-primary">S</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Sarah Williams</p>
-                    <p className="text-sm text-muted-foreground">Daughter</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
