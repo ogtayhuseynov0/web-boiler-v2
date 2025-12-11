@@ -1,10 +1,9 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, User, ArrowLeft } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PublicMemoirBook } from "@/components/memoir/public-memoir-book";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -90,9 +89,9 @@ export default async function PublicMemoirPage({
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
+      <header className="flex-shrink-0 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-primary" />
@@ -100,10 +99,7 @@ export default async function PublicMemoirPage({
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild>
-              <Link href="/memoirs">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Browse Memoirs
-              </Link>
+              <Link href="/memoirs">Browse Memoirs</Link>
             </Button>
             <Button asChild>
               <Link href="/login">Start Your Memoir</Link>
@@ -112,95 +108,39 @@ export default async function PublicMemoirPage({
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
-        {/* Author Info */}
-        <div className="flex flex-col items-center text-center mb-12">
-          <Avatar className="h-24 w-24 mb-4">
-            <AvatarImage src={memoir.owner.avatar_url || undefined} />
-            <AvatarFallback>
-              <User className="h-12 w-12" />
-            </AvatarFallback>
-          </Avatar>
-          <h1 className="text-4xl font-serif font-bold mb-2">
-            {memoir.owner.memoir_title || `${memoir.owner.name}'s Memoir`}
-          </h1>
-          {memoir.owner.memoir_description && (
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              {memoir.owner.memoir_description}
-            </p>
-          )}
-          <p className="text-sm text-muted-foreground mt-4">
-            {totalStories} stories across {memoir.chapters.length} chapters
-          </p>
-        </div>
-
-        {/* Chapters */}
-        <div className="space-y-12">
-          {memoir.chapters.map((chapter) => (
-            <section key={chapter.id}>
-              <div className="border-b pb-4 mb-6">
-                <h2 className="text-2xl font-serif font-bold">{chapter.title}</h2>
-                {chapter.description && (
-                  <p className="text-muted-foreground mt-1">{chapter.description}</p>
-                )}
-                {chapter.time_period_start && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {chapter.time_period_start}
-                    {chapter.time_period_end &&
-                      chapter.time_period_end !== chapter.time_period_start &&
-                      ` - ${chapter.time_period_end}`}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-8">
-                {chapter.stories.map((story) => (
-                  <Card key={story.id} className="overflow-hidden">
-                    <CardHeader className="pb-2">
-                      {story.title && (
-                        <CardTitle className="font-serif text-xl">
-                          {story.title}
-                        </CardTitle>
-                      )}
-                      {story.time_period && (
-                        <p className="text-sm text-muted-foreground">
-                          {story.time_period}
-                        </p>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="prose prose-neutral dark:prose-invert max-w-none">
-                        {story.content.split("\n\n").map((paragraph, i) => (
-                          <p key={i} className="text-foreground leading-relaxed mb-4">
-                            {paragraph}
-                          </p>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <div className="mt-16 text-center py-12 border-t">
-          <h3 className="text-2xl font-bold mb-4">Create Your Own Memoir</h3>
-          <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
-            Preserve your life stories for generations to come. Start sharing
-            your memories today with voice, chat, or writing.
-          </p>
-          <Button size="lg" asChild>
-            <Link href="/login">Start Free</Link>
-          </Button>
-        </div>
+      {/* Book */}
+      <main className="flex-1 flex flex-col min-h-0 p-4">
+        {totalStories === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h2 className="text-xl font-medium mb-2">This memoir is empty</h2>
+              <p className="text-muted-foreground mb-6">
+                No stories have been added yet.
+              </p>
+              <Button asChild>
+                <Link href="/memoirs">Browse Other Memoirs</Link>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <PublicMemoirBook
+            ownerName={memoir.owner.name}
+            memoirTitle={memoir.owner.memoir_title}
+            chapters={memoir.chapters}
+          />
+        )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Memoir. All rights reserved.</p>
+      {/* Footer CTA */}
+      <footer className="flex-shrink-0 border-t py-4 bg-muted/30">
+        <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            Create your own memoir and preserve your life stories forever.
+          </p>
+          <Button asChild>
+            <Link href="/login">Start Free</Link>
+          </Button>
         </div>
       </footer>
     </div>
