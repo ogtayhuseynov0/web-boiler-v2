@@ -726,7 +726,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t py-16 px-4 bg-muted/20">
         <div className="container mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="h-6 w-6 text-primary" />
@@ -735,6 +735,9 @@ export default function Home() {
               <p className="text-sm text-muted-foreground mb-4">
                 Preserve your life stories through natural conversation.
                 Your memoir, beautifully captured.
+              </p>
+              <p className="text-sm font-medium text-primary">
+                100% Free During Beta
               </p>
             </div>
             <div>
@@ -750,31 +753,71 @@ export default function Home() {
                     Start Free
                   </Link>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Features</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link href="/dashboard" className="hover:text-foreground transition-colors">
+                    Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/sessions" className="hover:text-foreground transition-colors">
+                    Voice Sessions
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/chapters" className="hover:text-foreground transition-colors">
+                    Chapters
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/memoir" className="hover:text-foreground transition-colors">
+                    My Memoir
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/invites" className="hover:text-foreground transition-colors">
+                    Story Invites
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Account</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="/login" className="hover:text-foreground transition-colors">
-                    Gift a Memoir
+                    Login
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/signup" className="hover:text-foreground transition-colors">
+                    Sign Up
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/settings" className="hover:text-foreground transition-colors">
+                    Settings
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/my-submissions" className="hover:text-foreground transition-colors">
+                    My Submissions
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
+              <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="/about" className="hover:text-foreground transition-colors">
-                    About Us
-                  </Link>
-                </li>
                 <li>
                   <Link href="mailto:hello@memoir.bot" className="hover:text-foreground transition-colors">
-                    Contact
+                    Contact Us
                   </Link>
                 </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="/privacy" className="hover:text-foreground transition-colors">
                     Privacy Policy
