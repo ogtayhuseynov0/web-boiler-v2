@@ -51,6 +51,7 @@ export function Sidebar() {
     <>
       <div className="flex h-16 items-center gap-2 px-6 border-b border-border dark:border-border/50">
         <Link href="/" className="flex items-center gap-2 group">
+          <Image src="/logo-256.png" alt="Memoir" width={28} height={28} />
           <span className="text-xl font-bold">Memoir</span>
         </Link>
       </div>
