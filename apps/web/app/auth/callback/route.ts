@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const redirect = searchParams.get("redirect") || "/dashboard";
+
+  // Get the correct origin from forwarded headers (for reverse proxy)
+  const headersList = await headers();
+  const host = headersList.get("x-forwarded-host") || headersList.get("host") || "localhost:3000";
+  const proto = headersList.get("x-forwarded-proto") || "https";
+  const origin = `${proto}://${host}`;
 
   if (code) {
     const supabase = await createClient();
