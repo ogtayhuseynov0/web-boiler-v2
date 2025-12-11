@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BookOpen, User, Settings, LogOut, LayoutDashboard, FileText } from "lucide-react";
+import { User, Settings, LogOut, LayoutDashboard, FileText, BookOpen } from "lucide-react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -42,7 +43,7 @@ export function LandingHeader() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-primary" />
+            <Image src="/logo-32.png" alt="Memoir" width={28} height={28} />
             <span className="text-xl font-bold">Memoir</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">

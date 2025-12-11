@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   BookOpen,
@@ -729,7 +730,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="h-6 w-6 text-primary" />
+                <Image src="/logo-32.png" alt="Memoir" width={28} height={28} />
                 <span className="text-xl font-bold">Memoir</span>
               </div>
               <p className="text-sm text-muted-foreground mb-4">

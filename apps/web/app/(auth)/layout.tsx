@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function AuthLayout({
   children,
@@ -15,7 +16,8 @@ export default function AuthLayout({
       <header className="border-b border-border px-4 py-4 dark:border-border/50">
         <div className="mx-auto max-w-7xl">
           <Link href="/" className="flex items-center gap-2 group w-fit">
-            <span className="text-xl font-bold">Boilerplate</span>
+            <Image src="/logo-32.png" alt="Memoir" width={32} height={32} />
+            <span className="text-xl font-bold">Memoir</span>
           </Link>
         </div>
       </header>
