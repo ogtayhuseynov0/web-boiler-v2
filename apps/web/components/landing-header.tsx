@@ -43,7 +43,7 @@ export function LandingHeader() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo-32.png" alt="Memoir" width={28} height={28} />
+            <Image src="/logo-256.png" alt="Memoir" width={28} height={28} />
             <span className="text-xl font-bold">Memoir</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">

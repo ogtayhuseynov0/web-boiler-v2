@@ -730,7 +730,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <Image src="/logo-32.png" alt="Memoir" width={28} height={28} />
+                <Image src="/logo-256.png" alt="Memoir" width={28} height={28} />
                 <span className="text-xl font-bold">Memoir</span>
               </div>
               <p className="text-sm text-muted-foreground mb-4">

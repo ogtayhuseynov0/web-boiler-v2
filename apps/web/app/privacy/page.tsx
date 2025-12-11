@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo-32.png" alt="Memoir" width={28} height={28} />
+            <Image src="/logo-256.png" alt="Memoir" width={28} height={28} />
             <span className="text-xl font-bold">Memoir</span>
           </Link>
           <Button variant="ghost" asChild>
